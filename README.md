@@ -1,0 +1,120 @@
+# 밀폐공간 통합 안전 관제 시스템
+
+IoT 센서와 AI 카메라로 밀폐공간의 **환경 이상**(온도·습도·가스·발열)과 **작업자 이상행동**(쓰러짐·장시간 정지)을 실시간으로 감지하는 웹 관제 대시보드입니다.
+
+## 구성
+
+| 구분 | 장비 / 기술 | 역할 |
+|---|---|---|
+| 영상 | Logitech C920 + YOLOv8n + MediaPipe Pose | 사람 탐지, 쓰러짐·장시간 정지 판정 |
+| 환경 센서 | ESP32 + DHT22 + MQ-2/MQ-135 | 온도·습도·가스 측정 → USB 시리얼(JSON) 전송 |
+| 열화상 | Waveshare Thermal-45 (ESP32-S3) | 80×62 열화상 → Wi-Fi TCP(3333) 전송, 발열 감지 |
+| 서버 | Flask + Flask-SocketIO | 영상 스트리밍, 센서 데이터 실시간 전송 |
+| 대시보드 | HTML + Socket.IO + Chart.js | 실시간 모니터링 화면 |
+
+센서나 카메라가 연결되지 않아도 **더미 데이터 모드**로 자동 전환되어 대시보드를 확인할 수 있습니다.
+
+## 폴더 구조
+
+```
+.
+├── app.py                  ← Flask 서버 메인 (여기서 실행)
+├── detector.py             ← YOLOv8 + MediaPipe 쓰러짐 감지
+├── thermal_detector.py     ← 열화상 카메라 TCP 수신 / 발열 판정
+├── requirements.txt
+├── templates/
+│   ├── login.html          ← 로그인 화면
+│   └── index.html          ← 관제 대시보드
+└── esp32_sensor/
+    ├── esp32_sensor.ino    ← ESP32 환경 센서 펌웨어
+    └── secrets.example.h   ← Wi-Fi 설정 견본 (secrets.h로 복사해서 사용)
+```
+
+## 처음 세팅
+
+### 1. 서버 실행
+
+```bash
+pip install -r requirements.txt
+python app.py
+```
+
+브라우저에서 http://localhost:5000 접속
+
+- 데모 계정: `admin` / `1234`
+- 모델 파일(`yolov8n.pt`, `pose_landmarker_lite.task`)은 첫 실행 시 자동 다운로드됩니다. (git에는 포함하지 않음)
+
+### 2. 카메라 번호 확인
+
+`app.py`의 `cv2.VideoCapture(1)`은 외장 카메라(C920) 기준입니다.
+노트북 내장 카메라만 있으면 `0`으로 바꿔서 실행하세요.
+
+### 3. ESP32 환경 센서 (선택)
+
+1. `esp32_sensor/secrets.example.h`를 복사해서 `secrets.h`로 이름 변경
+2. `secrets.h`에 본인 Wi-Fi 정보 입력 (**이 파일은 git에 올라가지 않습니다**)
+3. Arduino IDE에서 라이브러리 설치: `DHT sensor library`, `ArduinoJson`
+4. ESP32에 업로드 후 USB로 PC/Jetson에 연결
+
+`app.py`가 ESP32 포트(CP210x, CH340 등)를 자동으로 찾습니다. 시리얼 속도는 **115200**입니다.
+
+**배선**
+
+| 센서 | 핀 | ESP32 |
+|---|---|---|
+| DHT22 | VCC / DATA / GND | 3.3V / GPIO4 / GND |
+| MQ-2·MQ-135 | VCC / AO / GND | 5V / GPIO34 / GND |
+
+### 4. 열화상 카메라 (선택)
+
+1. Thermal-45 모듈에 Type-C 전원 연결
+2. 서버 PC/Jetson을 모듈 Wi-Fi(`Thermal_Camera_XXXX`)에 접속
+3. `app.py` 실행 시 `192.168.4.1:3333`으로 자동 연결
+
+공유기(STA 모드)에 연결해서 쓸 때는 `thermal_detector.py`의 `THERMAL_IP`를 모듈 IP로 바꾸세요.
+
+## 환경변수 (선택)
+
+| 이름 | 설명 | 기본값 |
+|---|---|---|
+| `SECRET_KEY` | Flask 세션 키. 시연·배포 기기에서만 설정 | 개발용 기본값 |
+
+```bash
+# 랜덤 키 생성
+python -c "import secrets; print(secrets.token_hex(32))"
+
+# Linux / Jetson
+export SECRET_KEY="생성한 값"
+
+# Windows PowerShell
+$env:SECRET_KEY="생성한 값"
+```
+
+## 감지 기준 조정
+
+**쓰러짐 감지** (`detector.py`)
+
+```python
+FALL_RATIO_THRESHOLD  = 1.2   # 바운딩박스 가로/세로 비율
+SPINE_ANGLE_THRESHOLD = 45    # 척추 기울기 각도 (도)
+STILL_TIME_THRESHOLD  = 5.0   # 장시간 정지 판정 (초)
+```
+
+**발열 감지** (`thermal_detector.py`)
+
+```python
+TEMP_WARN   = 45.0   # 주의 (°C)
+TEMP_DANGER = 60.0   # 위험 (°C)
+```
+
+## Jetson Nano 이식
+
+1. JetPack SDK 설치 (NVIDIA 공식 사이트)
+2. Jetson 전용 PyTorch wheel 설치
+3. 나머지는 동일하게 `pip install -r requirements.txt`
+4. `python app.py` 실행
+
+## 참고
+
+- 현재 로그인은 프론트엔드(`login.html`)에서만 확인하는 **데모용**입니다. 실제 운영 시 서버 측 인증이 필요합니다.
+- Wi-Fi 비밀번호 등 민감 정보는 `secrets.h`에만 넣고 커밋하지 마세요.

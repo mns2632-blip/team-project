@@ -1,0 +1,1455 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>밀폐공간 안전 관제 시스템</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+  :root {
+    --blue:    #1757C2;
+    --blue2:   #2563EB;
+    --blue-lt: #EFF4FF;
+    --red:     #DC2626;
+    --red-lt:  #FEF2F2;
+    --yellow:  #D97706;
+    --yel-lt:  #FFFBEB;
+    --green:   #16A34A;
+    --grn-lt:  #F0FDF4;
+    --gray50:  #F8FAFC;
+    --gray100: #F1F5F9;
+    --gray200: #E2E8F0;
+    --gray300: #CBD5E1;
+    --gray400: #94A3B8;
+    --gray500: #64748B;
+    --gray600: #475569;
+    --gray800: #1E293B;
+    --text:    #0F172A;
+    --temp:    #EA580C;
+    --humid:   #0284C7;
+    --gas:     #7C3AED;
+    --header-h: 60px;
+    --nav-h:    44px;
+    --sidebar-w: 380px;
+  }
+  html, body {
+    width:100%; height:100%;
+    background:var(--gray100);
+    color:var(--text);
+    font-family:'Pretendard','Noto Sans KR',sans-serif;
+    overflow:hidden;
+  }
+
+  /* ── 헤더 ── */
+  header {
+    height:var(--header-h);
+    background:#fff;
+    border-bottom:1px solid var(--gray200);
+    display:flex; align-items:center;
+    padding:0 24px;
+    gap:16px; z-index:100; position:relative;
+    box-shadow:0 1px 3px rgba(0,0,0,0.06);
+  }
+  .hdr-logo {
+    display:flex; align-items:center; gap:10px;
+    padding-right:20px;
+    border-right:1px solid var(--gray200);
+  }
+  .hdr-logo-icon {
+    width:34px; height:34px;
+    background:var(--blue2); border-radius:8px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:18px; color:#fff;
+  }
+  .hdr-logo-text { font-size:15px; font-weight:700; color:var(--text); letter-spacing:-0.3px; }
+  .hdr-logo-sub  { font-size:11px; color:var(--gray500); }
+
+  .hdr-breadcrumb {
+    display:flex; align-items:center; gap:6px;
+    font-size:13px; color:var(--gray500);
+  }
+  .hdr-breadcrumb span { color:var(--text); font-weight:500; }
+
+  .hdr-right { margin-left:auto; display:flex; align-items:center; gap:12px; }
+  .hdr-time  { font-size:13px; color:var(--gray600); font-variant-numeric:tabular-nums; }
+  .conn-badge {
+    display:flex; align-items:center; gap:6px;
+    background:var(--grn-lt); border:1px solid #BBF7D0;
+    border-radius:20px; padding:4px 10px;
+    font-size:12px; font-weight:500; color:var(--green);
+  }
+  .conn-dot { width:7px; height:7px; border-radius:50%; background:var(--green); animation:blink 1.8s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .logout-btn {
+    font-size:13px; font-weight:500; color:var(--gray600);
+    background:var(--gray100); border:1px solid var(--gray200);
+    border-radius:7px; padding:6px 14px; cursor:pointer;
+    transition:all .15s;
+  }
+  .logout-btn:hover { background:var(--gray200); color:var(--text); }
+
+  /* ── 서브 네비 ── */
+  .subnav {
+    height:var(--nav-h);
+    background:#fff; border-bottom:1px solid var(--gray200);
+    display:flex; align-items:center; padding:0 24px; gap:4px;
+  }
+  .subnav-item {
+    font-size:13px; font-weight:500; color:var(--gray500);
+    padding:6px 14px; border-radius:6px; cursor:pointer;
+    transition:all .15s;
+  }
+  .subnav-item:hover  { background:var(--gray100); color:var(--text); }
+  .subnav-item.active { background:var(--blue-lt); color:var(--blue); font-weight:600; }
+
+  /* ── 전체 레이아웃 ── */
+  .layout {
+    display:flex;
+    height:calc(100vh - var(--header-h) - var(--nav-h));
+    overflow:hidden;
+  }
+
+  /* ── 메인 콘텐츠 ── */
+  .main {
+    flex:1; overflow-y:auto;
+    padding:20px 24px;
+    display:flex; flex-direction:column; gap:16px;
+  }
+
+  /* 상단 요약 바 */
+  .summary-bar {
+    display:grid; grid-template-columns:repeat(4,1fr); gap:12px;
+  }
+  .summary-card {
+    background:#fff; border:1px solid var(--gray200);
+    border-radius:10px; padding:14px 18px;
+    display:flex; align-items:center; gap:14px;
+    transition:box-shadow .15s;
+  }
+  .summary-card:hover { box-shadow:0 4px 12px rgba(0,0,0,0.06); }
+  .sc-icon {
+    width:40px; height:40px; border-radius:10px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:20px; flex-shrink:0;
+  }
+  .sc-icon.temp  { background:#FFF7ED; }
+  .sc-icon.humid { background:#F0F9FF; }
+  .sc-icon.gas   { background:#F5F3FF; }
+  .sc-icon.ai    { background:var(--grn-lt); }
+  .sc-label { font-size:12px; color:var(--gray500); margin-bottom:3px; }
+  .sc-val   { font-size:22px; font-weight:700; letter-spacing:-0.5px; }
+  .sc-val.temp  { color:var(--temp); }
+  .sc-val.humid { color:var(--humid); }
+  .sc-val.gas   { color:var(--gas); }
+  .sc-val.ai    { color:var(--green); font-size:15px; }
+  .sc-unit { font-size:12px; color:var(--gray400); margin-left:2px; }
+  .sc-badge {
+    margin-top:4px; display:inline-flex; align-items:center; gap:4px;
+    font-size:11px; font-weight:500; padding:2px 8px; border-radius:20px;
+  }
+  .sc-badge.ok     { background:var(--grn-lt); color:var(--green); }
+  .sc-badge.warn   { background:var(--yel-lt); color:var(--yellow); }
+  .sc-badge.danger { background:var(--red-lt); color:var(--red); }
+
+  /* 중단 */
+  .mid-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; align-items:stretch; }
+
+  /* 영상 패널 */
+  .video-panel {
+    background:#fff; border:1px solid var(--gray200);
+    border-radius:10px; overflow:hidden;
+    display:flex; flex-direction:column;
+  }
+  .panel-head {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:12px 16px; border-bottom:1px solid var(--gray200);
+  }
+  .panel-title { font-size:13px; font-weight:600; color:var(--text); display:flex; align-items:center; gap:8px; }
+  .panel-badge-live {
+    display:flex; align-items:center; gap:5px;
+    background:var(--red-lt); color:var(--red);
+    font-size:11px; font-weight:600; padding:3px 8px; border-radius:20px;
+  }
+  .live-dot { width:6px; height:6px; border-radius:50%; background:var(--red); animation:blink 1s infinite; }
+  .video-wrap {
+    position:relative; background:#0F172A;
+    width:100%;
+    height:180px;
+    display:flex; align-items:center; justify-content:center;
+    overflow:hidden;
+  }
+  .video-wrap img { width:100%; height:100%; object-fit:cover; display:block; }
+  .video-info {
+    position:absolute; bottom:10px; left:10px;
+    display:flex; gap:8px;
+  }
+  .vinfo-chip {
+    background:rgba(0,0,0,0.6); backdrop-filter:blur(4px);
+    color:#fff; font-size:11px; padding:3px 8px; border-radius:4px;
+  }
+
+  /* AI 탐지 배너 */
+  .det-banner {
+    margin:8px 16px 14px; padding:10px 14px;
+    border-radius:8px; display:flex; align-items:center; gap:10px;
+    font-size:13px; font-weight:500; transition:all .3s;
+    border:1px solid var(--gray200); background:var(--grn-lt); color:var(--green);
+  }
+  .det-banner.warn   { background:var(--yel-lt); color:var(--yellow); border-color:#FDE68A; }
+  .det-banner.danger { background:var(--red-lt); color:var(--red); border-color:#FECACA; }
+  .det-icon { font-size:16px; }
+
+  /* 평면도 패널 */
+  .map-panel {
+    background:#fff; border:1px solid var(--gray200);
+    border-radius:10px; overflow:hidden;
+    display:flex; flex-direction:column;
+    height: 300px;
+  }
+  .fp-canvas { flex:1; width:100%; }
+
+  /* 하단 */
+  .bot-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+
+  /* 차트 패널 */
+  .chart-panel {
+    background:#fff; border:1px solid var(--gray200);
+    border-radius:10px; overflow:hidden;
+  }
+  .chart-tabs { display:flex; padding:0 16px; border-bottom:1px solid var(--gray200); }
+  .ctab {
+    font-size:12px; font-weight:500; color:var(--gray500);
+    padding:10px 12px; cursor:pointer; border-bottom:2px solid transparent;
+    transition:all .15s;
+  }
+  .ctab:hover { color:var(--text); }
+  .ctab.active { color:var(--blue); border-bottom-color:var(--blue); }
+  .chart-body { padding:14px; }
+
+  /* 이벤트 로그 패널 */
+  .log-panel {
+    background:#fff; border:1px solid var(--gray200);
+    border-radius:10px; overflow:hidden;
+    display:flex; flex-direction:column;
+  }
+  .log-body { flex:1; overflow-y:auto; padding:8px 0; }
+  .log-entry {
+    display:flex; align-items:flex-start; gap:10px;
+    padding:8px 16px; font-size:12px;
+    border-bottom:1px solid var(--gray100);
+    transition:background .1s;
+  }
+  .log-entry:hover { background:var(--gray50); }
+  .log-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; margin-top:3px; }
+  .log-dot.ok     { background:var(--green); }
+  .log-dot.warn   { background:var(--yellow); }
+  .log-dot.danger { background:var(--red); }
+  .log-dot.info   { background:var(--gray400); }
+  .log-time { color:var(--gray400); flex-shrink:0; }
+  .log-msg.danger { color:var(--red); font-weight:500; }
+  .log-msg.warn   { color:var(--yellow); font-weight:500; }
+  .log-msg.ok     { color:var(--green); }
+
+  /* ── 사이드 패널 (오른쪽 상세) ── */
+  .side-panel {
+    width:0; overflow:hidden; background:#fff;
+    border-left:1px solid var(--gray200);
+    transition:width .3s cubic-bezier(.4,0,.2,1);
+    display:flex; flex-direction:column;
+    flex-shrink:0;
+  }
+  .side-panel.open { width:var(--sidebar-w); }
+  .side-head {
+    padding:14px 20px; border-bottom:1px solid var(--gray200);
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .side-title { font-size:14px; font-weight:600; color:var(--text); }
+  .side-close {
+    width:28px; height:28px; border-radius:6px;
+    background:var(--gray100); border:none; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    font-size:14px; color:var(--gray500); transition:background .15s;
+  }
+  .side-close:hover { background:var(--gray200); }
+  .side-body { flex:1; overflow-y:auto; padding:16px 20px; display:flex; flex-direction:column; gap:16px; }
+
+  .stat-grid3 { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+  .stat3 {
+    background:var(--gray50); border:1px solid var(--gray200);
+    border-radius:8px; padding:12px; text-align:center;
+  }
+  .stat3-label { font-size:11px; color:var(--gray500); margin-bottom:5px; }
+  .stat3-val   { font-size:20px; font-weight:700; }
+  .stat3.mn .stat3-val { color:var(--humid); }
+  .stat3.av .stat3-val { color:var(--green); }
+  .stat3.mx .stat3-val { color:var(--red); }
+
+  .side-section-title { font-size:12px; font-weight:600; color:var(--gray600); margin-bottom:8px; }
+
+  .alert-item {
+    display:flex; gap:10px; padding:8px 0;
+    border-bottom:1px solid var(--gray100); font-size:12px;
+  }
+  .alert-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; margin-top:3px; }
+  .alert-dot.danger { background:var(--red); }
+  .alert-dot.warn   { background:var(--yellow); }
+  .alert-time { color:var(--gray400); flex-shrink:0; }
+  .alert-msg.danger { color:var(--red); font-weight:500; }
+  .alert-msg.warn   { color:var(--yellow); }
+
+  /* 요약 카드 클릭 가능 */
+  .summary-card.clickable { cursor:pointer; }
+  .summary-card.clickable.active {
+    border-color:var(--blue2);
+    box-shadow:0 0 0 3px rgba(37,99,235,0.1);
+  }
+
+  /* ── 페이지 뷰 ── */
+  .page-view { display:none; flex:1; overflow-y:auto; padding:20px 24px; flex-direction:column; gap:16px; }
+  .page-view.active { display:flex; }
+  .page-header { background:#fff; border:1px solid var(--gray200); border-radius:10px; padding:20px 24px; }
+  .page-header-title { font-size:18px; font-weight:700; color:var(--text); margin-bottom:4px; }
+  .page-header-sub   { font-size:13px; color:var(--gray500); }
+  .data-table { width:100%; border-collapse:collapse; font-size:13px; }
+  .data-table th { background:var(--gray50); padding:10px 14px; text-align:left; font-weight:600; color:var(--gray600); border-bottom:2px solid var(--gray200); font-size:12px; }
+  .data-table td { padding:10px 14px; border-bottom:1px solid var(--gray100); color:var(--text); }
+  .data-table tr:hover td { background:var(--gray50); }
+  .table-wrap { background:#fff; border:1px solid var(--gray200); border-radius:10px; overflow:hidden; }
+  .setting-card { background:#fff; border:1px solid var(--gray200); border-radius:10px; padding:20px 24px; }
+  .setting-title { font-size:14px; font-weight:600; color:var(--text); margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid var(--gray100); }
+  .setting-row { display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--gray100); }
+  .setting-row:last-child { border-bottom:none; }
+  .setting-label { font-size:13px; color:var(--gray800); }
+  .setting-sub   { font-size:11px; color:var(--gray400); margin-top:2px; }
+  .setting-input { border:1px solid var(--gray200); border-radius:6px; padding:6px 10px; font-size:13px; font-family:inherit; color:var(--text); outline:none; width:100px; text-align:right; }
+  .setting-input:focus { border-color:var(--blue2); }
+
+  /* ── 위험/경고 오버레이 ── */
+  .alert-overlay {
+    position:fixed; inset:0; z-index:9999;
+    display:none; flex-direction:column;
+    align-items:center; justify-content:center;
+    animation:overlay-in .3s ease;
+  }
+  .alert-overlay.active { display:flex; }
+  .alert-overlay.danger { background:rgba(220,38,38,0.96); }
+  .alert-overlay.warn   { background:rgba(217,119,6,0.94); }
+  @keyframes overlay-in { from{opacity:0;transform:scale(1.03)} to{opacity:1;transform:scale(1)} }
+  .ov-icon  { font-size:80px; margin-bottom:16px; animation:ov-pulse .6s infinite; }
+  @keyframes ov-pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.12)} }
+  .ov-title { font-size:72px; font-weight:900; color:#fff; letter-spacing:-2px; margin-bottom:10px; }
+  .ov-msg   { font-size:22px; color:rgba(255,255,255,.9); margin-bottom:28px; }
+  .ov-chips { display:flex; gap:12px; margin-bottom:36px; flex-wrap:wrap; justify-content:center; }
+  .ov-chip  { background:rgba(255,255,255,.2); border:1px solid rgba(255,255,255,.4); border-radius:8px; padding:10px 20px; font-size:15px; color:#fff; font-weight:500; }
+  .ov-dismiss { background:#fff; border:none; border-radius:8px; padding:13px 40px; font-size:15px; font-weight:700; cursor:pointer; font-family:inherit; transition:transform .1s; }
+  .alert-overlay.danger .ov-dismiss { color:var(--red); }
+  .alert-overlay.warn   .ov-dismiss { color:var(--yellow); }
+  .ov-dismiss:hover { transform:scale(1.03); }
+
+  /* ── 열화상 카메라 UI ── */
+  .thermal-panel {
+    background:#fff; border:1px solid var(--gray200);
+    border-radius:10px; overflow:hidden;
+    display:flex; flex-direction:column;
+  }
+  .thermal-body { padding:14px; display:flex; flex-direction:column; gap:10px; }
+  .thermal-stats { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
+  .thermal-stat {
+    background:var(--gray50); border:1px solid var(--gray200);
+    border-radius:8px; padding:10px; text-align:center;
+  }
+  .thermal-stat-label { font-size:10px; color:var(--gray500); margin-bottom:4px; }
+  .thermal-stat-val   { font-size:18px; font-weight:700; }
+  .thermal-stat-val.max    { color:var(--red); }
+  .thermal-stat-val.avg    { color:var(--temp); }
+  .thermal-stat-val.status { font-size:13px; }
+  .thermal-stat-val.ok     { color:var(--green); }
+  .thermal-stat-val.warn   { color:var(--yellow); }
+  .thermal-stat-val.danger { color:var(--red); }
+  .thermal-canvas-wrap {
+    position:relative; background:#0F172A;
+    border-radius:8px; overflow:hidden;
+    display:flex; align-items:center; justify-content:center;
+    height:160px;
+  }
+  #thermal-canvas { width:100%; height:100%; image-rendering:pixelated; }
+  .thermal-crosshair {
+    position:absolute; pointer-events:none;
+    font-size:10px; color:#fff; font-family:monospace;
+    background:rgba(0,0,0,0.5); padding:2px 6px; border-radius:3px;
+  }
+  .thermal-badge {
+    display:inline-flex; align-items:center; gap:5px;
+    padding:4px 10px; border-radius:20px; font-size:11px; font-weight:500;
+  }
+  .thermal-badge.ok     { background:var(--grn-lt); color:var(--green); }
+  .thermal-badge.warn   { background:var(--yel-lt); color:var(--yellow); }
+  .thermal-badge.danger { background:var(--red-lt); color:var(--red); animation:blink 0.5s infinite; }
+
+  /* ── 이상 감지 로그 3분할 ── */
+  .alert-log-wrap {
+    background:#fff; border:1px solid var(--gray200);
+    border-radius:10px; overflow:hidden;
+    display:flex; flex-direction:column;
+  }
+  .alert-log-cols {
+    display:grid; grid-template-columns:1fr 1fr 1fr;
+    flex:1; overflow:hidden;
+    border-top:1px solid var(--gray200);
+  }
+  .alert-log-col {
+    display:flex; flex-direction:column;
+    border-right:1px solid var(--gray200);
+    min-height:200px;
+  }
+  .alert-log-col:last-child { border-right:none; }
+  .alert-col-head {
+    padding:8px 12px;
+    border-bottom:1px solid var(--gray200);
+    font-size:11px; font-weight:600;
+    display:flex; align-items:center; gap:6px;
+    background:var(--gray50);
+    flex-shrink:0;
+  }
+  .alert-col-head.sensor  { color:var(--temp); }
+  .alert-col-head.ai      { color:var(--gas); }
+  .alert-col-head.thermal { color:var(--red); }
+  .alert-col-body {
+    flex:1; overflow-y:auto;
+    padding:4px 0;
+  }
+  .alert-col-entry {
+    padding:5px 10px; font-size:11px;
+    border-bottom:1px solid var(--gray100);
+    display:flex; flex-direction:column; gap:2px;
+  }
+  .alert-col-entry:hover { background:var(--gray50); }
+  .alert-col-time { font-size:10px; color:var(--gray400); }
+  .alert-col-msg  { font-weight:500; }
+  .alert-col-msg.danger { color:var(--red); }
+  .alert-col-msg.warn   { color:var(--yellow); }
+  .alert-col-empty {
+    padding:16px; text-align:center;
+    font-size:11px; color:var(--gray400);
+  }
+
+  ::-webkit-scrollbar { width:4px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  ::-webkit-scrollbar-thumb { background:var(--gray200); border-radius:4px; }
+</style>
+</head>
+<body>
+
+<!-- 헤더 -->
+<header>
+  <div class="hdr-logo">
+    <div class="hdr-logo-icon">🛡</div>
+    <div>
+      <div class="hdr-logo-text">SafetyMonitor</div>
+      <div class="hdr-logo-sub">Confined Space IoT System</div>
+    </div>
+  </div>
+  <div class="hdr-breadcrumb">
+    홈 › <span>실시간 관제</span>
+  </div>
+  <div class="hdr-right">
+    <div class="hdr-time" id="clock">--:--:--</div>
+    <div class="conn-badge">
+      <div class="conn-dot" id="conn-dot"></div>
+      <span id="conn-label">연결 중...</span>
+    </div>
+    <button class="logout-btn" onclick="logout()">로그아웃</button>
+  </div>
+</header>
+
+<!-- 서브 네비 -->
+<div class="subnav">
+  <div class="subnav-item active" onclick="switchPage(this,'monitor')">실시간 관제</div>
+  <div class="subnav-item" onclick="switchPage(this,'thermal')">🌡 열화상 카메라</div>
+  <div class="subnav-item" onclick="switchPage(this,'history')">센서 이력</div>
+  <div class="subnav-item" onclick="switchPage(this,'alerts')">이상 감지 로그</div>
+  <div class="subnav-item" onclick="switchPage(this,'settings')">시스템 설정</div>
+</div>
+
+<!-- 위험/경고 오버레이 -->
+<div class="alert-overlay" id="alert-overlay">
+  <div class="ov-icon" id="ov-icon">⚠️</div>
+  <div class="ov-title" id="ov-title">위 험</div>
+  <div class="ov-msg"  id="ov-msg">이상이 감지되었습니다</div>
+  <div class="ov-chips" id="ov-chips"></div>
+  <button class="ov-dismiss" onclick="dismissOverlay()">확인 (알림 닫기)</button>
+</div>
+
+<!-- 레이아웃 -->
+<div class="layout">
+
+  <!-- 메인 (실시간 관제) -->
+  <div class="main page-view active" id="page-monitor">
+
+    <!-- 요약 카드 -->
+    <div class="summary-bar">
+      <div class="summary-card clickable" id="card-temp" onclick="openSide('temp')">
+        <div class="sc-icon temp">🌡</div>
+        <div>
+          <div class="sc-label">온도</div>
+          <div><span class="sc-val temp" id="temp-val">--.-</span><span class="sc-unit">°C</span></div>
+          <div class="sc-badge ok" id="temp-badge">정상</div>
+        </div>
+      </div>
+      <div class="summary-card clickable" id="card-humid" onclick="openSide('humid')">
+        <div class="sc-icon humid">💧</div>
+        <div>
+          <div class="sc-label">습도</div>
+          <div><span class="sc-val humid" id="humid-val">--.-</span><span class="sc-unit">%RH</span></div>
+          <div class="sc-badge ok" id="humid-badge">정상</div>
+        </div>
+      </div>
+      <div class="summary-card clickable" id="card-gas" onclick="openSide('gas')">
+        <div class="sc-icon gas">☁</div>
+        <div>
+          <div class="sc-label">가스 농도</div>
+          <div><span class="sc-val gas" id="gas-val">---</span><span class="sc-unit">ppm</span></div>
+          <div class="sc-badge ok" id="gas-badge">정상</div>
+        </div>
+      </div>
+      <div class="summary-card">
+        <div class="sc-icon ai">🤖</div>
+        <div>
+          <div class="sc-label">AI 탐지 상태</div>
+          <div class="sc-val ai" id="ai-status">정상</div>
+          <div class="sc-badge ok" id="ai-badge">이상 없음</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 중단 -->
+    <div class="mid-row">
+
+      <!-- 영상 -->
+      <div class="video-panel">
+        <div class="panel-head">
+          <div class="panel-title">
+            📷 AI 탐지 영상
+            <span style="font-size:12px;color:var(--gray500);font-weight:400;">CAM-01 · Logitech C920</span>
+          </div>
+          <div class="panel-badge-live"><div class="live-dot"></div>LIVE</div>
+        </div>
+        <div class="video-wrap">
+          <img src="/video_feed" alt="AI Camera Feed">
+          <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#94A3B8;font-size:13px;">
+          카메라 오프라인
+          </div>
+          <div class="video-info">
+            <div class="vinfo-chip">1280×720</div>
+            <div class="vinfo-chip">YOLOv8 + MediaPipe</div>
+          </div>
+        </div>
+        <div class="det-banner" id="det-banner">
+          <span class="det-icon">✅</span>
+          <span id="det-text">정상 — 이상 행동이 감지되지 않았습니다.</span>
+        </div>
+      </div>
+
+      <!-- 평면도 -->
+      <div class="map-panel">
+        <div class="panel-head">
+          <div class="panel-title">📍 센서 위치 (평면도)</div>
+        </div>
+        <canvas class="fp-canvas" id="floorplan"></canvas>
+      </div>
+
+    </div>
+
+    <!-- 하단 -->
+    <div class="bot-row" style="grid-template-columns:1fr 1fr;">
+
+      <!-- 센서 차트 -->
+      <div class="chart-panel">
+        <div class="panel-head">
+          <div class="panel-title">📈 실시간 센서 그래프</div>
+        </div>
+        <div class="chart-tabs">
+          <div class="ctab active" id="ctab-temp"  onclick="switchChart('temp')">온도</div>
+          <div class="ctab"        id="ctab-humid" onclick="switchChart('humid')">습도</div>
+          <div class="ctab"        id="ctab-gas"   onclick="switchChart('gas')">가스</div>
+        </div>
+        <div class="chart-body">
+          <canvas id="sensor-chart" height="200"></canvas>
+        </div>
+      </div>
+
+      <!-- 이벤트 로그 -->
+      <div class="log-panel">
+        <div class="panel-head">
+          <div class="panel-title">📋 이벤트 로그</div>
+          <span style="font-size:11px;color:var(--gray400);">최근 10개</span>
+        </div>
+        <div class="log-body" id="log-body"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 열화상 카메라 페이지 -->
+  <div class="page-view" id="page-thermal">
+    <div class="page-header">
+      <div class="page-header-title">🌡 열화상 카메라 모니터링</div>
+      <div class="page-header-sub">Waveshare ESP32-S3 · 80×62 px · Wi-Fi TCP · 45° FOV</div>
+    </div>
+
+    <!-- 상태 요약 카드 3개 -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+      <div class="summary-card">
+        <div class="sc-icon temp">🔴</div>
+        <div>
+          <div class="sc-label">최고 온도</div>
+          <div><span class="sc-val temp" id="th-max-val">--.-</span><span class="sc-unit">°C</span></div>
+          <div class="sc-badge ok" id="th-max-badge">정상</div>
+        </div>
+      </div>
+      <div class="summary-card">
+        <div class="sc-icon" style="background:#FFF7ED;">🟠</div>
+        <div>
+          <div class="sc-label">평균 온도</div>
+          <div><span class="sc-val" style="color:var(--temp);" id="th-avg-val">--.-</span><span class="sc-unit">°C</span></div>
+        </div>
+      </div>
+      <div class="summary-card">
+        <div class="sc-icon" style="background:#F0F9FF;">🔵</div>
+        <div>
+          <div class="sc-label">최저 온도</div>
+          <div><span class="sc-val" style="color:var(--humid);" id="th-min-val">--.-</span><span class="sc-unit">°C</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 히트맵 + 정보 -->
+    <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;flex:1;min-height:0;">
+
+      <!-- 히트맵 패널 -->
+      <div style="background:#fff;border:1px solid var(--gray200);border-radius:10px;overflow:hidden;display:flex;flex-direction:column;">
+        <div class="panel-head">
+          <div class="panel-title">
+            열화상 히트맵
+            <span style="font-size:12px;color:var(--gray500);font-weight:400;">80×62 픽셀</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div class="thermal-badge ok" id="th-page-badge">정상</div>
+            <div class="panel-badge-live"><div class="live-dot"></div>LIVE</div>
+          </div>
+        </div>
+        <div style="flex:1;padding:16px;display:flex;flex-direction:column;gap:12px;">
+          <!-- 히트맵 캔버스 -->
+          <div style="position:relative;background:#0F172A;border-radius:10px;overflow:hidden;flex:1;display:flex;align-items:center;justify-content:center;min-height:280px;">
+            <canvas id="thermal-canvas" width="80" height="62"
+              style="width:100%;height:100%;image-rendering:pixelated;display:block;"></canvas>
+            <!-- 핫스팟 오버레이 -->
+            <div id="thermal-hotspot"
+              style="position:absolute;bottom:10px;right:10px;background:rgba(0,0,0,0.65);
+                     backdrop-filter:blur(4px);color:#fff;font-size:11px;font-family:monospace;
+                     padding:4px 10px;border-radius:5px;">
+              📍 --,-- : --°C
+            </div>
+            <!-- 연결 상태 -->
+            <div id="th-conn-chip"
+              style="position:absolute;top:10px;left:10px;background:rgba(0,0,0,0.6);
+                     backdrop-filter:blur(4px);color:#94A3B8;font-size:11px;
+                     padding:3px 8px;border-radius:4px;">
+              대기 중...
+            </div>
+          </div>
+          <!-- 컬러 스케일 범례 -->
+          <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--gray500);">
+            <span>차가움</span>
+            <div style="flex:1;height:10px;border-radius:5px;
+              background:linear-gradient(to right,#00BFFF,#00FF80,#FFFF00,#FF4000);"></div>
+            <span>뜨거움</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 오른쪽: 상세 정보 + 발열 이력 -->
+      <div style="display:flex;flex-direction:column;gap:12px;">
+
+        <!-- 핫스팟 상세 -->
+        <div style="background:#fff;border:1px solid var(--gray200);border-radius:10px;padding:16px;">
+          <div class="side-section-title" style="margin-bottom:12px;">📍 최고 발열 위치</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <div style="background:var(--gray50);border:1px solid var(--gray200);border-radius:8px;padding:12px;text-align:center;">
+              <div style="font-size:11px;color:var(--gray500);margin-bottom:4px;">행 (Row)</div>
+              <div style="font-size:22px;font-weight:700;color:var(--red);" id="th-hot-row">--</div>
+            </div>
+            <div style="background:var(--gray50);border:1px solid var(--gray200);border-radius:8px;padding:12px;text-align:center;">
+              <div style="font-size:11px;color:var(--gray500);margin-bottom:4px;">열 (Col)</div>
+              <div style="font-size:22px;font-weight:700;color:var(--red);" id="th-hot-col">--</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 환경 센서 -->
+        <div style="background:#fff;border:1px solid var(--gray200);border-radius:10px;padding:16px;">
+          <div class="side-section-title" style="margin-bottom:12px;">🌿 환경 센서 (ESP32)</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+            <div style="background:var(--gray50);border:1px solid var(--gray200);border-radius:8px;padding:10px;text-align:center;">
+              <div style="font-size:10px;color:var(--gray500);margin-bottom:3px;">온도</div>
+              <div style="font-size:18px;font-weight:700;color:var(--temp);" id="th-env-temp">--.-</div>
+              <div style="font-size:10px;color:var(--gray400);">°C</div>
+            </div>
+            <div style="background:var(--gray50);border:1px solid var(--gray200);border-radius:8px;padding:10px;text-align:center;">
+              <div style="font-size:10px;color:var(--gray500);margin-bottom:3px;">습도</div>
+              <div style="font-size:18px;font-weight:700;color:var(--humid);" id="th-env-humid">--.-</div>
+              <div style="font-size:10px;color:var(--gray400);">%RH</div>
+            </div>
+            <div style="background:var(--gray50);border:1px solid var(--gray200);border-radius:8px;padding:10px;text-align:center;">
+              <div style="font-size:10px;color:var(--gray500);margin-bottom:3px;">가스</div>
+              <div style="font-size:18px;font-weight:700;color:var(--gas);" id="th-env-gas">---</div>
+              <div style="font-size:10px;color:var(--gray400);">ppm</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 연결 정보 -->
+        <div style="background:#fff;border:1px solid var(--gray200);border-radius:10px;padding:16px;">
+          <div class="side-section-title" style="margin-bottom:12px;">📡 모듈 정보</div>
+          <div style="font-size:12px;display:flex;flex-direction:column;gap:8px;color:var(--gray600);">
+            <div style="display:flex;justify-content:space-between;">
+              <span>모듈</span><span style="color:var(--text);font-weight:500;">Waveshare ESP32-S3</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;">
+              <span>해상도</span><span style="color:var(--text);font-weight:500;">80 × 62 px</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;">
+              <span>통신</span><span style="color:var(--text);font-weight:500;">Wi-Fi TCP :3333</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;">
+              <span>FOV</span><span style="color:var(--text);font-weight:500;">45°</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;">
+              <span>갱신 주기</span><span style="color:var(--text);font-weight:500;">2초</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;">
+              <span>연결 상태</span>
+              <span id="th-conn-text" style="color:var(--gray400);font-weight:500;">대기 중</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 발열 이상 이력 -->
+        <div style="background:#fff;border:1px solid var(--gray200);border-radius:10px;overflow:hidden;flex:1;display:flex;flex-direction:column;">
+          <div class="panel-head">
+            <div class="panel-title" style="font-size:12px;">🔥 발열 이상 이력</div>
+            <span style="font-size:11px;color:var(--gray400);">최근 20건</span>
+          </div>
+          <div style="flex:1;overflow-y:auto;" id="th-alert-list">
+            <div style="padding:16px;text-align:center;font-size:11px;color:var(--gray400);">이상 없음</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+  <!-- 센서 이력 페이지 -->
+  <div class="page-view" id="page-history">
+    <div class="page-header">
+      <div class="page-header-title">📊 센서 이력</div>
+      <div class="page-header-sub">수집된 센서 데이터 이력을 확인합니다.</div>
+    </div>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead><tr><th>시간</th><th>온도 (°C)</th><th>습도 (%RH)</th><th>가스 농도 (ppm)</th><th>상태</th></tr></thead>
+        <tbody id="history-tbody"><tr><td colspan="5" style="text-align:center;color:var(--gray400);padding:24px;">수집된 데이터가 없습니다.</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 이상 감지 로그 페이지 -->
+  <div class="page-view" id="page-alerts">
+    <div class="page-header">
+      <div class="page-header-title">🚨 이상 감지 로그</div>
+      <div class="page-header-sub">센서 · AI 탐지 · 열화상 이상 이벤트 기록입니다.</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;flex:1;overflow:hidden;">
+
+      <!-- 센서 이상 로그 -->
+      <div class="alert-log-wrap" style="min-height:400px;">
+        <div class="panel-head">
+          <div class="panel-title" style="color:var(--temp);">🌡 센서 이상</div>
+        </div>
+        <div class="alert-log-cols" style="grid-template-columns:1fr;">
+          <div class="alert-log-col" style="border-right:none;">
+            <div class="alert-col-body" id="log-sensor" style="max-height:400px;overflow-y:auto;">
+              <div class="alert-col-empty">이상 없음</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AI 탐지 로그 -->
+      <div class="alert-log-wrap" style="min-height:400px;">
+        <div class="panel-head">
+          <div class="panel-title" style="color:var(--gas);">🤖 AI 탐지</div>
+        </div>
+        <div class="alert-log-cols" style="grid-template-columns:1fr;">
+          <div class="alert-log-col" style="border-right:none;">
+            <div class="alert-col-body" id="log-ai" style="max-height:400px;overflow-y:auto;">
+              <div class="alert-col-empty">이상 없음</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 열화상 로그 -->
+      <div class="alert-log-wrap" style="min-height:400px;">
+        <div class="panel-head">
+          <div class="panel-title" style="color:var(--red);">🔥 열화상</div>
+        </div>
+        <div class="alert-log-cols" style="grid-template-columns:1fr;">
+          <div class="alert-log-col" style="border-right:none;">
+            <div class="alert-col-body" id="log-thermal" style="max-height:400px;overflow-y:auto;">
+              <div class="alert-col-empty">이상 없음</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 시스템 설정 페이지 -->
+  <div class="page-view" id="page-settings">
+    <div class="page-header">
+      <div class="page-header-title">⚙️ 시스템 설정</div>
+      <div class="page-header-sub">이상 감지 임계값 및 시스템 설정을 변경합니다.</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div class="setting-card">
+        <div class="setting-title">🌡 온도 임계값</div>
+        <div class="setting-row">
+          <div><div class="setting-label">주의 기준</div><div class="setting-sub">이 온도 초과 시 주의 알림</div></div>
+          <div style="display:flex;align-items:center;gap:4px;"><input class="setting-input" type="number" id="set-temp-warn" value="32">°C</div>
+        </div>
+        <div class="setting-row">
+          <div><div class="setting-label">위험 기준</div><div class="setting-sub">이 온도 초과 시 위험 알림</div></div>
+          <div style="display:flex;align-items:center;gap:4px;"><input class="setting-input" type="number" id="set-temp-danger" value="40">°C</div>
+        </div>
+      </div>
+      <div class="setting-card">
+        <div class="setting-title">💧 습도 임계값</div>
+        <div class="setting-row">
+          <div><div class="setting-label">고습도 위험 기준</div><div class="setting-sub">이 습도 초과 시 위험 알림</div></div>
+          <div style="display:flex;align-items:center;gap:4px;"><input class="setting-input" type="number" id="set-humid-high" value="85">%</div>
+        </div>
+        <div class="setting-row">
+          <div><div class="setting-label">저습도 주의 기준</div><div class="setting-sub">이 습도 미만 시 주의 알림</div></div>
+          <div style="display:flex;align-items:center;gap:4px;"><input class="setting-input" type="number" id="set-humid-low" value="20">%</div>
+        </div>
+      </div>
+      <div class="setting-card">
+        <div class="setting-title">☁ 가스 농도 임계값</div>
+        <div class="setting-row">
+          <div><div class="setting-label">주의 기준</div><div class="setting-sub">이 농도 초과 시 주의 알림</div></div>
+          <div style="display:flex;align-items:center;gap:4px;"><input class="setting-input" type="number" id="set-gas-warn" value="300">ppm</div>
+        </div>
+        <div class="setting-row">
+          <div><div class="setting-label">위험 기준</div><div class="setting-sub">이 농도 초과 시 위험 알림</div></div>
+          <div style="display:flex;align-items:center;gap:4px;"><input class="setting-input" type="number" id="set-gas-danger" value="500">ppm</div>
+        </div>
+      </div>
+      <div class="setting-card">
+        <div class="setting-title">🤖 AI 탐지 설정</div>
+        <div class="setting-row">
+          <div><div class="setting-label">장시간 정지 기준</div><div class="setting-sub">이 시간 이상 정지 시 감지</div></div>
+          <div style="display:flex;align-items:center;gap:4px;"><input class="setting-input" type="number" value="5">초</div>
+        </div>
+        <div class="setting-row">
+          <div><div class="setting-label">위험 오버레이 표시</div><div class="setting-sub">이상 감지 시 전체 화면 알림</div></div>
+          <input type="checkbox" id="set-overlay" checked style="width:18px;height:18px;cursor:pointer;">
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;margin-top:4px;">
+      <button onclick="saveSettings()" style="background:var(--blue2);color:#fff;border:none;border-radius:8px;padding:10px 28px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;">설정 저장</button>
+    </div>
+  </div>
+
+  <!-- 사이드 패널 -->
+  <div class="side-panel" id="side-panel">
+    <div class="side-head">
+      <div class="side-title" id="side-title">온도 상세</div>
+      <button class="side-close" onclick="closeSide()">✕</button>
+    </div>
+    <div class="side-body">
+      <div class="stat-grid3">
+        <div class="stat3 mn"><div class="stat3-label">최솟값</div><div class="stat3-val" id="stat-min">--</div></div>
+        <div class="stat3 av"><div class="stat3-label">평균</div><div class="stat3-val" id="stat-avg">--</div></div>
+        <div class="stat3 mx"><div class="stat3-label">최댓값</div><div class="stat3-val" id="stat-max">--</div></div>
+      </div>
+      <div>
+        <div class="side-section-title">실시간 추이</div>
+        <canvas id="side-chart" height="140"></canvas>
+      </div>
+      <div>
+        <div class="side-section-title">이상 감지 이력</div>
+        <div id="alert-list"><div style="font-size:12px;color:var(--gray400);padding:8px 0;">이상 감지 이력 없음</div></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── 로그인 체크 ──
+if (!sessionStorage.getItem("loggedIn")) window.location.href="/";
+function logout() { sessionStorage.removeItem("loggedIn"); window.location.href="/"; }
+
+// ── 페이지 전환 ──
+function switchPage(el, pageId) {
+  document.querySelectorAll(".subnav-item").forEach(i => i.classList.remove("active"));
+  el.classList.add("active");
+  document.querySelectorAll(".page-view").forEach(p => p.classList.remove("active"));
+  document.getElementById("page-"+pageId).classList.add("active");
+  if(pageId==="history") renderHistoryTable();
+  if(pageId==="alerts")  renderAlertLogTable();
+}
+
+// ── 전체 이상 로그 ──
+const allAlertLogs = [];
+
+// ── 센서 이력 테이블 ──
+function renderHistoryTable() {
+  const tbody = document.getElementById("history-tbody");
+  const len = Math.max(history.temp.length, history.humid.length, history.gas.length);
+  if(!len) { tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--gray400);padding:24px;">수집된 데이터가 없습니다.</td></tr>'; return; }
+  const rows = [];
+  for(let i=0;i<len;i++) {
+    const t=history.temp[i]||{}, h=history.humid[i]||{}, g=history.gas[i]||{};
+    const tV=t.val!==undefined?t.val:'--', hV=h.val!==undefined?h.val:'--', gV=g.val!==undefined?g.val:'--';
+    const worst = tV>40||hV>85||gV>500?'danger':tV>32||gV>300?'warn':'ok';
+    const badge = worst==='danger'?'<span style="color:var(--red);font-weight:600;">위험</span>':worst==='warn'?'<span style="color:var(--yellow);font-weight:600;">주의</span>':'<span style="color:var(--green);">정상</span>';
+    rows.push('<tr><td>'+(t.time||h.time||g.time||'--')+'</td><td>'+tV+'</td><td>'+hV+'</td><td>'+gV+'</td><td>'+badge+'</td></tr>');
+  }
+  tbody.innerHTML = rows.reverse().join('');
+}
+
+// ── 이상 감지 로그 테이블 ──
+function renderAlertLogTable() {
+  const tbody = document.getElementById("alertlog-tbody");
+  if(!allAlertLogs.length) { tbody.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--gray400);padding:24px;">이상 감지 이력이 없습니다.</td></tr>'; return; }
+  tbody.innerHTML = allAlertLogs.slice().reverse().map(l => {
+    const typeLabel = l.sensor==='cam'?'AI 탐지':l.sensor==='temp'?'온도':l.sensor==='humid'?'습도':'가스';
+    const badge = l.type==='danger'?'<span style="color:var(--red);font-weight:600;">위험</span>':'<span style="color:var(--yellow);font-weight:600;">주의</span>';
+    return '<tr><td>'+l.time+'</td><td>'+typeLabel+'</td><td>'+l.msg+'</td><td>'+badge+'</td></tr>';
+  }).join('');
+}
+
+// ── 오버레이 ──
+let overlayTimer = null;
+function showOverlay(type, title, msg, chips) {
+  if(!document.getElementById("set-overlay")?.checked) return;
+  const ov = document.getElementById("alert-overlay");
+  ov.className = "alert-overlay active "+type;
+  document.getElementById("ov-icon").textContent  = type==='danger'?'🚨':'⚠️';
+  document.getElementById("ov-title").textContent = title;
+  document.getElementById("ov-msg").textContent   = msg;
+  document.getElementById("ov-chips").innerHTML   = chips.map(c=>'<div class="ov-chip">'+c+'</div>').join('');
+  if(overlayTimer) clearTimeout(overlayTimer);
+  overlayTimer = setTimeout(dismissOverlay, 8000);
+}
+function dismissOverlay() {
+  document.getElementById("alert-overlay").classList.remove("active");
+  if(overlayTimer) clearTimeout(overlayTimer);
+}
+
+// ── 설정 저장 ──
+function saveSettings() { alert("설정이 저장되었습니다."); }
+
+// ── 시계 ──
+function tick() {
+  document.getElementById("clock").textContent =
+    new Date().toLocaleTimeString("ko-KR",{hour12:false});
+}
+tick(); setInterval(tick,1000);
+
+// ── 데이터 ──
+const history   = { temp:[], humid:[], gas:[] };
+const alertLogs = { temp:[], humid:[], gas:[] };
+const MAX_HIST  = 30;
+let currentSensor = "temp";
+let sideOpen = false;
+
+// ── 평면도 ──
+const fp = document.getElementById("floorplan");
+const fctx = fp.getContext("2d");
+
+const sensorPos = {
+  temp:  { rx:0.22, ry:0.38, label:"온도", icon:"🌡", color:"#EA580C" },
+  humid: { rx:0.65, ry:0.38, label:"습도", icon:"💧", color:"#0284C7" },
+  gas:   { rx:0.44, ry:0.68, label:"가스", icon:"☁", color:"#7C3AED" },
+  cam:   { rx:0.80, ry:0.22, label:"카메라", icon:"📷", color:"#1757C2" },
+};
+
+let sensorStatus = { temp:"ok", humid:"ok", gas:"ok", cam:"ok" };
+
+function drawFP() {
+  fp.width  = fp.parentElement.clientWidth;
+  fp.height = fp.parentElement.clientHeight - 45;
+  if (fp.height < 10) return;
+  const W=fp.width, H=fp.height;
+  fctx.clearRect(0,0,W,H);
+
+  // 배경
+  fctx.fillStyle="#F8FAFC"; fctx.fillRect(0,0,W,H);
+
+  // 그리드
+  fctx.strokeStyle="#E2E8F0"; fctx.lineWidth=1;
+  for(let x=0;x<W;x+=25){fctx.beginPath();fctx.moveTo(x,0);fctx.lineTo(x,H);fctx.stroke();}
+  for(let y=0;y<H;y+=25){fctx.beginPath();fctx.moveTo(0,y);fctx.lineTo(W,y);fctx.stroke();}
+
+  // 방 외벽
+  const rm = {x:W*0.08,y:H*0.12,w:W*0.84,h:H*0.76};
+  fctx.fillStyle="#fff";
+  fctx.fillRect(rm.x,rm.y,rm.w,rm.h);
+  fctx.strokeStyle="#CBD5E1"; fctx.lineWidth=2;
+  fctx.strokeRect(rm.x,rm.y,rm.w,rm.h);
+
+  // 방 라벨
+  fctx.fillStyle="#94A3B8"; fctx.font="11px Pretendard,sans-serif";
+  fctx.textAlign="left";
+  fctx.fillText("배터리 보관·시험 공간", rm.x+10, rm.y+16);
+
+  // 문
+  fctx.strokeStyle="#94A3B8"; fctx.lineWidth=1.5;
+  const doorX = rm.x + rm.w*0.42;
+  fctx.beginPath(); fctx.moveTo(doorX,rm.y); fctx.lineTo(doorX+rm.w*0.16,rm.y); fctx.stroke();
+  fctx.fillStyle="#94A3B8"; fctx.font="9px Pretendard"; fctx.textAlign="center";
+  fctx.fillText("출입문", doorX+rm.w*0.08, rm.y-4);
+
+  // 배터리 박스
+  const bx=rm.x+16, by=rm.y+24, bw=70, bh=50;
+  fctx.fillStyle="#F1F5F9";
+  fctx.fillRect(bx,by,bw,bh);
+  fctx.strokeStyle="#CBD5E1"; fctx.lineWidth=1;
+  fctx.strokeRect(bx,by,bw,bh);
+  fctx.fillStyle="#64748B"; fctx.font="10px Pretendard"; fctx.textAlign="center";
+  fctx.fillText("배터리", bx+bw/2, by+bh/2+4);
+
+  // 중앙 허브
+  const cx=rm.x+rm.w*0.5, cy=rm.y+rm.h*0.5;
+
+  // 센서 마커
+  Object.entries(sensorPos).forEach(([key,s]) => {
+    const x=rm.x+rm.w*s.rx, y=rm.y+rm.h*s.ry;
+    const st = sensorStatus[key];
+    const c = st==="danger"?"#DC2626":st==="warn"?"#D97706":s.color;
+
+    // 연결선
+    fctx.strokeStyle=c+"33"; fctx.lineWidth=1.5;
+    fctx.setLineDash([4,6]);
+    fctx.beginPath(); fctx.moveTo(x,y); fctx.lineTo(cx,cy); fctx.stroke();
+    fctx.setLineDash([]);
+
+    // 글로우
+    const g=fctx.createRadialGradient(x,y,0,x,y,22);
+    g.addColorStop(0,c+"22"); g.addColorStop(1,"transparent");
+    fctx.fillStyle=g; fctx.beginPath(); fctx.arc(x,y,22,0,Math.PI*2); fctx.fill();
+
+    // 원
+    fctx.beginPath(); fctx.arc(x,y,10,0,Math.PI*2);
+    fctx.fillStyle=c; fctx.fill();
+    fctx.strokeStyle="#fff"; fctx.lineWidth=2; fctx.stroke();
+
+    // 라벨
+    fctx.fillStyle=c; fctx.font="bold 10px Pretendard"; fctx.textAlign="center";
+    fctx.fillText(s.label, x, y-14);
+
+    // 값
+    let v="";
+    if(key==="temp")  v=document.getElementById("temp-val").textContent+"°C";
+    if(key==="humid") v=document.getElementById("humid-val").textContent+"%";
+    if(key==="gas")   v=document.getElementById("gas-val").textContent+"ppm";
+    if(key==="cam")   v="LIVE";
+    fctx.fillStyle="#64748B"; fctx.font="9px Pretendard";
+    fctx.fillText(v, x, y+22);
+  });
+
+  // 허브
+  fctx.beginPath(); fctx.arc(cx,cy,10,0,Math.PI*2);
+  fctx.fillStyle=var2hex("--blue2","#2563EB"); fctx.fill();
+  fctx.strokeStyle="#fff"; fctx.lineWidth=2; fctx.stroke();
+  fctx.fillStyle="#fff"; fctx.font="bold 8px Pretendard"; fctx.textAlign="center";
+  fctx.fillText("HUB", cx, cy+3);
+}
+
+function var2hex(v,fallback){ return fallback; }
+setInterval(drawFP,2000); window.addEventListener("resize",drawFP); setTimeout(drawFP,100);
+
+// ── Chart.js 메인 차트 ──
+const chartColors = { temp:"#EA580C", humid:"#0284C7", gas:"#7C3AED" };
+const chartLabels = { temp:"온도 (°C)", humid:"습도 (%RH)", gas:"가스 농도 (ppm)" };
+
+const cCtx = document.getElementById("sensor-chart").getContext("2d");
+const mainChart = new Chart(cCtx, {
+  type:"line",
+  data:{ labels:[], datasets:[{ data:[], borderColor:"#EA580C", backgroundColor:"rgba(234,88,12,0.08)", borderWidth:2, pointRadius:2, fill:true, tension:0.4 }] },
+  options:{
+    animation:false, responsive:true,
+    plugins:{ legend:{ display:false } },
+    scales:{
+      x:{ ticks:{ color:"#94A3B8", font:{size:10} }, grid:{ color:"#F1F5F9" } },
+      y:{ ticks:{ color:"#94A3B8", font:{size:10} }, grid:{ color:"#F1F5F9" } }
+    }
+  }
+});
+
+function switchChart(sensor) {
+  currentSensor = sensor;
+  ["temp","humid","gas"].forEach(s => {
+    document.getElementById("ctab-"+s).classList.toggle("active", s===sensor);
+  });
+  updateMainChart(sensor);
+  if(sideOpen) { updateSideChart(sensor); updateStats(sensor); }
+}
+
+function updateMainChart(sensor) {
+  const h=history[sensor];
+  mainChart.data.labels = h.map(d=>d.time);
+  mainChart.data.datasets[0].data = h.map(d=>d.val);
+  mainChart.data.datasets[0].borderColor = chartColors[sensor];
+  mainChart.data.datasets[0].backgroundColor = chartColors[sensor]+"14";
+  mainChart.update();
+}
+
+// ── 사이드 차트 ──
+const sCtx = document.getElementById("side-chart").getContext("2d");
+const sideChart = new Chart(sCtx, {
+  type:"line",
+  data:{ labels:[], datasets:[{ data:[], borderColor:"#EA580C", backgroundColor:"rgba(234,88,12,0.08)", borderWidth:2, pointRadius:2, fill:true, tension:0.4 }] },
+  options:{
+    animation:false, responsive:true,
+    plugins:{ legend:{ display:false } },
+    scales:{
+      x:{ ticks:{ color:"#94A3B8", font:{size:9} }, grid:{ color:"#F1F5F9" } },
+      y:{ ticks:{ color:"#94A3B8", font:{size:9} }, grid:{ color:"#F1F5F9" } }
+    }
+  }
+});
+
+function updateSideChart(sensor) {
+  const h=history[sensor];
+  sideChart.data.labels = h.map(d=>d.time);
+  sideChart.data.datasets[0].data = h.map(d=>d.val);
+  sideChart.data.datasets[0].borderColor = chartColors[sensor];
+  sideChart.data.datasets[0].backgroundColor = chartColors[sensor]+"14";
+  sideChart.update();
+}
+
+function updateStats(sensor) {
+  const vals=history[sensor].map(d=>d.val);
+  if(!vals.length) return;
+  document.getElementById("stat-min").textContent = Math.min(...vals).toFixed(1);
+  document.getElementById("stat-avg").textContent = (vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1);
+  document.getElementById("stat-max").textContent = Math.max(...vals).toFixed(1);
+}
+
+// ── 사이드 패널 ──
+const sideLabels = { temp:"온도 상세", humid:"습도 상세", gas:"가스 농도 상세" };
+
+function openSide(sensor) {
+  currentSensor = sensor;
+  document.getElementById("side-title").textContent = sideLabels[sensor];
+  ["temp","humid","gas"].forEach(s =>
+    document.getElementById("card-"+s).classList.toggle("active", s===sensor)
+  );
+  document.getElementById("side-panel").classList.add("open");
+  sideOpen = true;
+  updateSideChart(sensor); updateStats(sensor); renderAlertList(sensor);
+}
+
+function closeSide() {
+  document.getElementById("side-panel").classList.remove("open");
+  sideOpen = false;
+  ["temp","humid","gas"].forEach(s =>
+    document.getElementById("card-"+s).classList.remove("active")
+  );
+}
+
+function renderAlertList(sensor) {
+  const list = document.getElementById("alert-list");
+  const logs = alertLogs[sensor];
+  if(!logs.length) {
+    list.innerHTML='<div style="font-size:12px;color:var(--gray400);padding:8px 0;">이상 감지 이력 없음</div>';
+    return;
+  }
+  list.innerHTML = logs.slice().reverse().map(l=>
+    `<div class="alert-item">
+      <div class="alert-dot ${l.type}"></div>
+      <span class="alert-time">${l.time}</span>
+      <span class="alert-msg ${l.type}">${l.msg}</span>
+    </div>`
+  ).join("");
+}
+
+// ── SocketIO ──
+const socket = io();
+socket.on("connect", () => {
+  document.getElementById("conn-dot").style.background="var(--green)";
+  document.getElementById("conn-label").textContent="서버 연결됨";
+  addLog("서버 연결 성공","ok");
+});
+socket.on("disconnect", () => {
+  document.getElementById("conn-dot").style.background="var(--red)";
+  document.getElementById("conn-label").textContent="연결 끊김";
+});
+
+socket.on("sensor_update", (data) => {
+  const now=new Date().toLocaleTimeString("ko-KR",{hour12:false});
+  const t=data.temperature, h=data.humidity, g=data.gas;
+
+  const push=(key,val)=>{
+    history[key].push({time:now,val:parseFloat(val)});
+    if(history[key].length>MAX_HIST) history[key].shift();
+  };
+  push("temp",t); push("humid",h); push("gas",g);
+
+  document.getElementById("temp-val").textContent  = t.toFixed(1);
+  document.getElementById("humid-val").textContent = h.toFixed(1);
+  document.getElementById("gas-val").textContent   = g;
+
+  // 상태 판정
+  const tS = t>40?"danger":t>32?"warn":"ok";
+  const hS = h>85||h<20?(h>85?"danger":"warn"):"ok";
+  const gS = g>500?"danger":g>300?"warn":"ok";
+  sensorStatus.temp=tS; sensorStatus.humid=hS; sensorStatus.gas=gS;
+
+  setBadge("temp-badge",  tS, t>40?"위험":t>32?"주의":"정상");
+  setBadge("humid-badge", hS, h>85?"위험":h<20?"주의":"정상");
+  setBadge("gas-badge",   gS, g>500?"위험":g>300?"주의":"정상");
+
+  if(t>40)       { pushAlert("temp",  `온도 위험: ${t}°C`,"danger",now); logAllAlert("temp",`온도 위험: ${t}°C`,"danger",now); }
+  else if(t>32)  { pushAlert("temp",  `온도 주의: ${t}°C`,"warn",now);   logAllAlert("temp",`온도 주의: ${t}°C`,"warn",now); }
+  if(h>85)       { pushAlert("humid", `고습도 위험: ${h}%RH`,"danger",now); logAllAlert("humid",`고습도 위험: ${h}%RH`,"danger",now); }
+  if(g>500)      { pushAlert("gas",   `가스 위험: ${g}ppm`,"danger",now);   logAllAlert("gas",`가스 위험: ${g}ppm`,"danger",now); }
+  else if(g>300) { pushAlert("gas",   `가스 주의: ${g}ppm`,"warn",now);     logAllAlert("gas",`가스 주의: ${g}ppm`,"warn",now); }
+
+  // 오버레이 표시
+  const dangerChips = [];
+  if(t>40)  dangerChips.push(`🌡 온도: ${t}°C`);
+  if(h>85)  dangerChips.push(`💧 습도: ${h}%RH`);
+  if(g>500) dangerChips.push(`☁ 가스: ${g}ppm`);
+  if(dangerChips.length>0) showOverlay('danger','위 험','환경 이상이 감지되었습니다!', dangerChips);
+  else {
+    const warnChips = [];
+    if(t>32)  warnChips.push(`🌡 온도: ${t}°C`);
+    if(h<20)  warnChips.push(`💧 습도: ${h}%RH`);
+    if(g>300) warnChips.push(`☁ 가스: ${g}ppm`);
+    if(warnChips.length>0) showOverlay('warn','주 의','환경 주의 수준이 감지되었습니다.', warnChips);
+  }
+
+  updateMainChart(currentSensor);
+  if(sideOpen){ updateSideChart(currentSensor); updateStats(currentSensor); }
+  drawFP();
+});
+
+socket.on("detection_update", (data) => {
+  const banner=document.getElementById("det-banner");
+  const icon=document.getElementById("det-text");
+  banner.className="det-banner";
+  const now2=new Date().toLocaleTimeString("ko-KR",{hour12:false});
+  if(data.status.includes("쓰러짐")) {
+    banner.classList.add("danger");
+    icon.innerHTML="⚠ 경고 — 쓰러짐이 감지되었습니다.";
+    addLog("쓰러짐 감지됨!","danger"); sensorStatus.cam="danger";
+    setBadge("ai-badge","danger","위험"); document.getElementById("ai-status").textContent="위험";
+    logAllAlert("cam","쓰러짐 감지됨!","danger",now2);
+    addColLog("log-ai","쓰러짐 감지됨!","danger");
+    showOverlay('danger','위 험','작업자 쓰러짐이 감지되었습니다!',['🤖 AI 탐지: 쓰러짐']);
+  } else if(data.status.includes("정지")) {
+    banner.classList.add("warn");
+    icon.innerHTML="! 주의 — 장시간 정지가 감지되었습니다.";
+    addLog("장시간 정지 감지","warn"); sensorStatus.cam="warn";
+    setBadge("ai-badge","warn","주의"); document.getElementById("ai-status").textContent="주의";
+    logAllAlert("cam","장시간 정지 감지","warn",now2);
+    addColLog("log-ai","장시간 정지 감지","warn");
+    showOverlay('warn','주 의','작업자 장시간 정지가 감지되었습니다.',['🤖 AI 탐지: 장시간 정지']);
+  } else {
+    icon.innerHTML="✅ 정상 — 이상 행동이 감지되지 않았습니다.";
+    sensorStatus.cam="ok";
+    setBadge("ai-badge","ok","이상 없음"); document.getElementById("ai-status").textContent="정상";
+  }
+});
+
+function setBadge(id, cls, text) {
+  const el=document.getElementById(id);
+  el.className="sc-badge "+cls;
+  el.textContent=text;
+}
+
+function logAllAlert(sensor,msg,type,time) {
+  allAlertLogs.push({sensor,msg,type,time});
+  if(allAlertLogs.length>200) allAlertLogs.shift();
+}
+
+function pushAlert(sensor,msg,type,time) {
+  const last=alertLogs[sensor].at(-1);
+  if(last&&last.msg===msg) return;
+  alertLogs[sensor].push({msg,type,time});
+  if(alertLogs[sensor].length>100) alertLogs[sensor].shift();
+  addLog(msg, type);
+  if(sideOpen&&currentSensor===sensor) renderAlertList(sensor);
+}
+
+// ── 열화상 카메라 처리 ──
+const thermalCanvas = document.getElementById("thermal-canvas");
+const thermalCtx = thermalCanvas?.getContext("2d");
+const thAlertHistory = [];
+
+// 색상 매핑: 파랑(0) → 청록 → 초록 → 노랑 → 빨강(255) 4단계 그라데이션
+function thermalColor(val) {
+  // 0~63: 파랑→청록, 64~127: 청록→초록→노랑, 128~191: 노랑→주황, 192~255: 주황→빨강
+  let r, g, b;
+  if (val < 64) {
+    r = 0; g = val * 2; b = 255;
+  } else if (val < 128) {
+    r = 0; g = 128 + (val - 64); b = 255 - (val - 64) * 4;
+  } else if (val < 192) {
+    r = (val - 128) * 4; g = 255 - (val - 128) * 2; b = 0;
+  } else {
+    r = 255; g = Math.max(0, 128 - (val - 192) * 2); b = 0;
+  }
+  return [r, g, b];
+}
+
+socket.on("thermal_update", (data) => {
+  const now = new Date().toLocaleTimeString("ko-KR", {hour12:false});
+
+  // ── 열화상 전용 페이지 업데이트 ──
+  document.getElementById("th-max-val").textContent = data.max_temp.toFixed(1);
+  document.getElementById("th-avg-val").textContent = data.avg_temp.toFixed(1);
+  document.getElementById("th-min-val").textContent = data.min_temp.toFixed(1);
+  document.getElementById("th-hot-row").textContent = data.hot_pos[0];
+  document.getElementById("th-hot-col").textContent = data.hot_pos[1];
+  document.getElementById("thermal-hotspot").textContent =
+    `📍 (${data.hot_pos[0]}, ${data.hot_pos[1]}) : ${data.max_temp}°C`;
+
+  // 환경 센서값 (ESP32 DHT22 + MQ)
+  if (data.env_temperature !== undefined) {
+    document.getElementById("th-env-temp").textContent  = data.env_temperature.toFixed(1);
+    document.getElementById("th-env-humid").textContent = data.env_humidity.toFixed(1);
+    document.getElementById("th-env-gas").textContent   = data.env_gas;
+  }
+
+  // 연결 상태 칩
+  const connChip = document.getElementById("th-conn-chip");
+  const connText = document.getElementById("th-conn-text");
+  if (data.connected) {
+    connChip.textContent = "🟢 Wi-Fi 연결됨";
+    connChip.style.color = "#86EFAC";
+    connText.textContent = "연결됨";
+    connText.style.color = "var(--green)";
+  } else {
+    connChip.textContent = "🟡 더미 모드";
+    connChip.style.color = "#FDE68A";
+    connText.textContent = "더미 모드";
+    connText.style.color = "var(--yellow)";
+  }
+
+  // 페이지 배지
+  const pageBadge   = document.getElementById("th-page-badge");
+  const maxBadge    = document.getElementById("th-max-badge");
+  pageBadge.className = "thermal-badge";
+  pageBadge.textContent = data.status;
+  maxBadge.textContent  = data.status;
+  maxBadge.className    = "sc-badge";
+  if (data.status === "발열 위험") {
+    pageBadge.classList.add("danger");
+    maxBadge.classList.add("danger");
+    // 로그 + 오버레이
+    addLog(`열화상: 발열 위험 — ${data.max_temp}°C`, "danger");
+    addColLog("log-thermal", `발열 위험 — ${data.max_temp}°C 위치(${data.hot_pos[0]},${data.hot_pos[1]})`, "danger");
+    showOverlay('danger','위 험','배터리 발열 위험이 감지되었습니다!',
+      [`🌡 최고온도: ${data.max_temp}°C`, `📍 위치: (${data.hot_pos[0]}, ${data.hot_pos[1]})`]);
+    pushThAlert(data, "danger", now);
+  } else if (data.status === "발열 주의") {
+    pageBadge.classList.add("warn");
+    maxBadge.classList.add("warn");
+    addLog(`열화상: 발열 주의 — ${data.max_temp}°C`, "warn");
+    addColLog("log-thermal", `발열 주의 — ${data.max_temp}°C`, "warn");
+    pushThAlert(data, "warn", now);
+  } else {
+    pageBadge.classList.add("ok");
+    maxBadge.classList.add("ok");
+  }
+
+  // ── 히트맵 캔버스 그리기 ──
+  if (thermalCtx && data.heatmap) {
+    const cols = data.cols, rows = data.rows;
+    const imageData = thermalCtx.createImageData(cols, rows);
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const val = data.heatmap[r][c];
+        const idx = (r * cols + c) * 4;
+        const [R, G, B] = thermalColor(val);
+        imageData.data[idx]   = R;
+        imageData.data[idx+1] = G;
+        imageData.data[idx+2] = B;
+        imageData.data[idx+3] = 255;
+      }
+    }
+    thermalCtx.putImageData(imageData, 0, 0);
+  }
+});
+
+function pushThAlert(data, type, time) {
+  thAlertHistory.unshift({ type, time,
+    max: data.max_temp, pos: data.hot_pos });
+  if (thAlertHistory.length > 20) thAlertHistory.pop();
+  renderThAlertList();
+}
+
+function renderThAlertList() {
+  const el = document.getElementById("th-alert-list");
+  if (!thAlertHistory.length) {
+    el.innerHTML = '<div style="padding:16px;text-align:center;font-size:11px;color:var(--gray400);">이상 없음</div>';
+    return;
+  }
+  el.innerHTML = thAlertHistory.map(a => `
+    <div style="padding:8px 12px;border-bottom:1px solid var(--gray100);font-size:11px;display:flex;flex-direction:column;gap:2px;">
+      <span style="color:var(--gray400);">${a.time}</span>
+      <span style="font-weight:500;color:${a.type==='danger'?'var(--red)':'var(--yellow)'};">
+        ${a.type==='danger'?'🔴 발열 위험':'🟡 발열 주의'} — ${a.max.toFixed(1)}°C
+      </span>
+      <span style="color:var(--gray500);">위치: (${a.pos[0]}, ${a.pos[1]})</span>
+    </div>`).join('');
+}
+
+function addColLog(colId, msg, type) {
+  const col = document.getElementById(colId);
+  if (!col) return;
+  // 빈 상태 메시지 제거
+  const empty = col.querySelector(".alert-col-empty");
+  if (empty) empty.remove();
+  const now = new Date().toLocaleTimeString("ko-KR",{hour12:false});
+  const el = document.createElement("div");
+  el.className = "alert-col-entry";
+  el.innerHTML = `<span class="alert-col-time">${now}</span><span class="alert-col-msg ${type}">${msg}</span>`;
+  col.prepend(el);
+  while (col.children.length > 50) col.removeChild(col.lastChild);
+}
+
+function addLog(msg,type="info") {
+  const body=document.getElementById("log-body");
+  const now=new Date().toLocaleTimeString("ko-KR",{hour12:false});
+  const el=document.createElement("div");
+  el.className="log-entry";
+  el.innerHTML=`<div class="log-dot ${type}"></div><span class="log-time">${now}</span><span class="log-msg ${type}">${msg}</span>`;
+  body.prepend(el);
+  while(body.children.length>10) body.removeChild(body.lastChild);
+}
+
+addLog("시스템 초기화 완료","ok");
+</script>
+</body>
+</html>

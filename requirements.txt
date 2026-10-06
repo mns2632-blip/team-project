@@ -1,0 +1,7 @@
+ultralytics
+mediapipe
+opencv-python
+flask
+flask-socketio
+pyserial
+numpy
