@@ -46,7 +46,7 @@ def read_sensor_esp32():
 
     while True:
         try:
-            ser = serial.Serial(port, 115200, timeout=2)
+            ser = serial.Serial(port, 9600, timeout=2)
             print(f"[OK] ESP32 연결 완료 ({port})")
             sensor_connected = True
 

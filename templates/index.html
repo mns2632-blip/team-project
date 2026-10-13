@@ -155,7 +155,7 @@
   .sc-badge.danger { background:var(--red-lt); color:var(--red); }
 
   /* 중단 */
-  .mid-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; align-items:stretch; }
+  .mid-row { display:grid; grid-template-columns:3fr 2fr; gap:12px; align-items:stretch; }
 
   /* 영상 패널 */
   .video-panel {
@@ -177,11 +177,17 @@
   .video-wrap {
     position:relative; background:#0F172A;
     width:100%;
-    height:180px;
-    display:flex; align-items:center; justify-content:center;
+    height:0;
+    padding-bottom:56.25%; /* 16:9 비율 */
+    display:block;
     overflow:hidden;
   }
-  .video-wrap img { width:100%; height:100%; object-fit:cover; display:block; }
+  .video-wrap img,
+  .video-wrap > div,
+  .video-wrap > .video-info {
+    position:absolute;
+  }
+  .video-wrap img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
   .video-info {
     position:absolute; bottom:10px; left:10px;
     display:flex; gap:8px;
@@ -327,27 +333,61 @@
   .setting-input { border:1px solid var(--gray200); border-radius:6px; padding:6px 10px; font-size:13px; font-family:inherit; color:var(--text); outline:none; width:100px; text-align:right; }
   .setting-input:focus { border-color:var(--blue2); }
 
-  /* ── 위험/경고 오버레이 ── */
+  /* ── 위험/경고 토스트 (왼쪽 상단) ── */
   .alert-overlay {
-    position:fixed; inset:0; z-index:9999;
-    display:none; flex-direction:column;
-    align-items:center; justify-content:center;
-    animation:overlay-in .3s ease;
+    position:fixed; top:16px; left:16px; z-index:9999;
+    display:none; flex-direction:column; gap:0;
+    width:320px; border-radius:12px; overflow:hidden;
+    box-shadow:0 8px 32px rgba(0,0,0,0.22);
+    animation:toast-in .25s ease;
+    pointer-events:auto;
   }
   .alert-overlay.active { display:flex; }
-  .alert-overlay.danger { background:rgba(220,38,38,0.96); }
-  .alert-overlay.warn   { background:rgba(217,119,6,0.94); }
-  @keyframes overlay-in { from{opacity:0;transform:scale(1.03)} to{opacity:1;transform:scale(1)} }
-  .ov-icon  { font-size:80px; margin-bottom:16px; animation:ov-pulse .6s infinite; }
-  @keyframes ov-pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.12)} }
-  .ov-title { font-size:72px; font-weight:900; color:#fff; letter-spacing:-2px; margin-bottom:10px; }
-  .ov-msg   { font-size:22px; color:rgba(255,255,255,.9); margin-bottom:28px; }
-  .ov-chips { display:flex; gap:12px; margin-bottom:36px; flex-wrap:wrap; justify-content:center; }
-  .ov-chip  { background:rgba(255,255,255,.2); border:1px solid rgba(255,255,255,.4); border-radius:8px; padding:10px 20px; font-size:15px; color:#fff; font-weight:500; }
-  .ov-dismiss { background:#fff; border:none; border-radius:8px; padding:13px 40px; font-size:15px; font-weight:700; cursor:pointer; font-family:inherit; transition:transform .1s; }
-  .alert-overlay.danger .ov-dismiss { color:var(--red); }
-  .alert-overlay.warn   .ov-dismiss { color:var(--yellow); }
-  .ov-dismiss:hover { transform:scale(1.03); }
+  .alert-overlay.danger { border:2px solid var(--red); }
+  .alert-overlay.warn   { border:2px solid var(--yellow); }
+  @keyframes toast-in { from{opacity:0;transform:translateY(-12px)} to{opacity:1;transform:translateY(0)} }
+  /* 토스트 헤더 바 */
+  .ov-header {
+    display:flex; align-items:center; gap:8px;
+    padding:10px 14px;
+  }
+  .alert-overlay.danger .ov-header { background:var(--red); }
+  .alert-overlay.warn   .ov-header { background:var(--yellow); }
+  .ov-icon  { font-size:18px; animation:ov-pulse .7s infinite; flex-shrink:0; }
+  @keyframes ov-pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.18)} }
+  .ov-title { font-size:15px; font-weight:800; color:#fff; letter-spacing:-0.3px; flex:1; }
+  .ov-dismiss {
+    background:rgba(255,255,255,0.25); border:none; border-radius:6px;
+    width:26px; height:26px; display:flex; align-items:center; justify-content:center;
+    font-size:14px; color:#fff; cursor:pointer; font-family:inherit;
+    transition:background .15s; flex-shrink:0; padding:0;
+  }
+  .ov-dismiss:hover { background:rgba(255,255,255,0.45); }
+  /* 토스트 바디 */
+  .ov-body {
+    background:#fff; padding:12px 14px;
+    display:flex; flex-direction:column; gap:8px;
+  }
+  .ov-msg   { font-size:13px; color:var(--gray800); line-height:1.45; }
+  .ov-chips { display:flex; gap:6px; flex-wrap:wrap; }
+  .ov-chip  {
+    font-size:11px; font-weight:600; border-radius:5px;
+    padding:3px 8px; border:1px solid;
+  }
+  .alert-overlay.danger .ov-chip { background:var(--red-lt); color:var(--red); border-color:var(--red); }
+  .alert-overlay.warn   .ov-chip { background:var(--yel-lt); color:var(--yellow); border-color:var(--yellow); }
+  /* 타이머 진행 바 */
+  .ov-progress {
+    height:3px; width:100%;
+  }
+  .alert-overlay.danger .ov-progress { background:var(--red-lt); }
+  .alert-overlay.warn   .ov-progress { background:var(--yel-lt); }
+  .ov-progress-bar {
+    height:100%; width:100%;
+    transition:width linear;
+  }
+  .alert-overlay.danger .ov-progress-bar { background:var(--red); }
+  .alert-overlay.warn   .ov-progress-bar { background:var(--yellow); }
 
   /* ── 열화상 카메라 UI ── */
   .thermal-panel {
@@ -474,13 +514,18 @@
   <div class="subnav-item" onclick="switchPage(this,'settings')">시스템 설정</div>
 </div>
 
-<!-- 위험/경고 오버레이 -->
+<!-- 위험/경고 토스트 -->
 <div class="alert-overlay" id="alert-overlay">
-  <div class="ov-icon" id="ov-icon">⚠️</div>
-  <div class="ov-title" id="ov-title">위 험</div>
-  <div class="ov-msg"  id="ov-msg">이상이 감지되었습니다</div>
-  <div class="ov-chips" id="ov-chips"></div>
-  <button class="ov-dismiss" onclick="dismissOverlay()">확인 (알림 닫기)</button>
+  <div class="ov-header">
+    <span class="ov-icon" id="ov-icon">⚠️</span>
+    <span class="ov-title" id="ov-title">위험</span>
+    <button class="ov-dismiss" onclick="dismissOverlay()" title="닫기">✕</button>
+  </div>
+  <div class="ov-body">
+    <div class="ov-msg" id="ov-msg">이상이 감지되었습니다</div>
+    <div class="ov-chips" id="ov-chips"></div>
+  </div>
+  <div class="ov-progress"><div class="ov-progress-bar" id="ov-progress-bar"></div></div>
 </div>
 
 <!-- 레이아웃 -->
@@ -538,8 +583,8 @@
           <div class="panel-badge-live"><div class="live-dot"></div>LIVE</div>
         </div>
         <div class="video-wrap">
-          <img src="/video_feed" alt="AI Camera Feed">
-          <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#94A3B8;font-size:13px;">
+          <img src="/video_feed" alt="AI Camera Feed" onload="document.getElementById('cam-offline-msg').style.display='none'" onerror="document.getElementById('cam-offline-msg').style.display='flex'">
+          <div id="cam-offline-msg" style="position:absolute;width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#94A3B8;font-size:13px;">
           카메라 오프라인
           </div>
           <div class="video-info">
@@ -955,6 +1000,16 @@ function showOverlay(type, title, msg, chips) {
   document.getElementById("ov-title").textContent = title;
   document.getElementById("ov-msg").textContent   = msg;
   document.getElementById("ov-chips").innerHTML   = chips.map(c=>'<div class="ov-chip">'+c+'</div>').join('');
+  // 진행 바 애니메이션 (8초)
+  const bar = document.getElementById("ov-progress-bar");
+  bar.style.transition = 'none';
+  bar.style.width = '100%';
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      bar.style.transition = 'width 8s linear';
+      bar.style.width = '0%';
+    });
+  });
   if(overlayTimer) clearTimeout(overlayTimer);
   overlayTimer = setTimeout(dismissOverlay, 8000);
 }

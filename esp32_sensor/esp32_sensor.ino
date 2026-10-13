@@ -26,7 +26,7 @@
 // WiFi 정보
 // ─────────────────────────────
 
-#include "secrets.h"
+#include "secrets.example.h"
 const char* ssid = WIFI_SSID;
 const char* password = WIFI_PASS;
 
@@ -77,7 +77,7 @@ void handleRoot() {
 // ─────────────────────────────
 void setup() {
 
-  Serial.begin(115200);
+  Serial.begin(9600);
 
   dht.begin();
 

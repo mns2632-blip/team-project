@@ -1,3 +1,3 @@
 #pragma once
-#define WIFI_SSID "your-ssid"
-#define WIFI_PASS "your-password"
+#define WIFI_SSID "Sungbin"
+#define WIFI_PASS "m4572632"
