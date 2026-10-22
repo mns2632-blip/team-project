@@ -5,3 +5,4 @@ flask
 flask-socketio
 pyserial
 numpy
+python-dotenv

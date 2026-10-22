@@ -1,6 +1,8 @@
-// ── 로그인 체크 ──
-if (!sessionStorage.getItem("loggedIn")) window.location.href="/";
-function logout() { sessionStorage.removeItem("loggedIn"); window.location.href="/"; }
+// ── 로그아웃 ──
+async function logout() {
+  await fetch("/logout", {method:"POST"});
+  window.location.href = "/";
+}
 
 // ── 페이지 전환 ──
 function switchPage(el, pageId) {

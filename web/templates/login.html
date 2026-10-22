@@ -208,16 +208,27 @@
 
 <script>
   document.addEventListener("keydown", e => { if (e.key==="Enter") doLogin(); });
-  function doLogin() {
+  async function doLogin() {
     const id  = document.getElementById("username").value.trim();
-    const pw  = document.getElementById("password").value.trim();
+    const pw  = document.getElementById("password").value;
     const err = document.getElementById("error-msg");
     if (!id || !pw) { err.textContent = "아이디와 비밀번호를 입력해주세요."; return; }
-    if (id==="admin" && pw==="1234") {
-      sessionStorage.setItem("loggedIn","true");
-      window.location.href = "/dashboard";
-    } else {
-      err.textContent = "아이디 또는 비밀번호가 올바르지 않습니다.";
+
+    try {
+      const response = await fetch("/login", {
+        method: "POST",
+        headers: {"Content-Type": "application/x-www-form-urlencoded"},
+        body: new URLSearchParams({username: id, password: pw})
+      });
+      const result = await response.json();
+      if (response.ok && result.success) {
+        window.location.href = "/dashboard";
+      } else {
+        err.textContent = result.message;
+        document.getElementById("password").value = "";
+      }
+    } catch {
+      err.textContent = "서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.";
       document.getElementById("password").value = "";
     }
   }
