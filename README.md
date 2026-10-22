@@ -19,12 +19,13 @@ IoT 센서와 AI 카메라로 밀폐공간의 **환경 이상**(온도·습도·
 ```
 .
 ├── web/
-│   ├── app.py              ← Flask 서버 메인
-│   ├── detector.py         ← YOLOv8 + MediaPipe 쓰러짐 감지
-│   ├── thermal_detector.py ← 열화상 카메라 TCP 수신 / 발열 판정
-│   └── templates/
-│       ├── login.html      ← 로그인 화면
-│       └── index.html      ← 관제 대시보드
+│   ├── __main__.py         ← python -m web 실행 진입점
+│   ├── app.py              ← Flask 앱 생성 및 시작
+│   ├── routes/             ← 웹 페이지와 영상 스트림 라우트
+│   ├── services/           ← 카메라·센서 수집 서비스
+│   ├── detectors/          ← AI 감지 로직
+│   ├── models/             ← AI 모델 파일 (Git 제외)
+│   └── templates/          ← 로그인·관제 화면
 ├── pyproject.toml          ← Python 프로젝트 및 의존성 설정
 ├── uv.lock                 ← 잠금된 의존성 버전
 ├── requirements.txt
@@ -40,20 +41,20 @@ IoT 센서와 AI 카메라로 밀폐공간의 **환경 이상**(온도·습도·
 ```bash
 # uv 설치: https://docs.astral.sh/uv/getting-started/installation/
 uv sync
-uv run web/app.py
+uv run python -m web
 ```
 
 브라우저에서 http://localhost:5000 접속
 
 - 데모 계정: `admin` / `1234`
-- 모델 파일(`yolov8n.pt`, `pose_landmarker_lite.task`)은 첫 실행 시 자동 다운로드됩니다. (git에는 포함하지 않음)
+- AI 모델 파일(`yolov8n.pt`, `pose_landmarker_lite.task`)은 `web/models/`에 저장되며, 없으면 실행 시 자동 다운로드됩니다. (Git에는 포함하지 않음)
 - `uv sync`는 `.venv`에 잠금된 의존성을 설치하고, `uv run`은 해당 환경에서 앱을 실행합니다.
 
-pip으로 설치해야 하는 환경에서는 `pip install -r requirements.txt` 후 `python web/app.py`로도 실행할 수 있습니다.
+pip으로 설치해야 하는 환경에서는 `pip install -r requirements.txt` 후 `python -m web`로 실행할 수 있습니다.
 
 ### 2. 카메라 번호 확인
 
-`web/app.py`의 `cv2.VideoCapture(1)`은 외장 카메라(C920) 기준입니다.
+`web/services/camera.py`의 `cv2.VideoCapture(1)`은 외장 카메라(C920) 기준입니다.
 노트북 내장 카메라만 있으면 `0`으로 바꿔서 실행하세요.
 
 ### 3. ESP32 환경 센서 (선택)
@@ -63,7 +64,7 @@ pip으로 설치해야 하는 환경에서는 `pip install -r requirements.txt` 
 3. Arduino IDE에서 라이브러리 설치: `DHT sensor library`, `ArduinoJson`
 4. ESP32에 업로드 후 USB로 PC/Jetson에 연결
 
-`web/app.py`가 ESP32 포트(CP210x, CH340 등)를 자동으로 찾습니다. 시리얼 속도는 **115200**입니다.
+`web/services/sensors.py`가 ESP32 포트(CP210x, CH340 등)를 자동으로 찾습니다. 시리얼 속도는 **115200**입니다.
 
 **배선**
 
@@ -76,9 +77,9 @@ pip으로 설치해야 하는 환경에서는 `pip install -r requirements.txt` 
 
 1. Thermal-45 모듈에 Type-C 전원 연결
 2. 서버 PC/Jetson을 모듈 Wi-Fi(`Thermal_Camera_XXXX`)에 접속
-3. `web/app.py` 실행 시 `192.168.4.1:3333`으로 자동 연결
+3. 앱 실행 시 `192.168.4.1:3333`으로 자동 연결
 
-공유기(STA 모드)에 연결해서 쓸 때는 `web/thermal_detector.py`의 `THERMAL_IP`를 모듈 IP로 바꾸세요.
+공유기(STA 모드)에 연결해서 쓸 때는 `web/services/thermal_camera.py`의 `THERMAL_IP`를 모듈 IP로 바꾸세요.
 
 ## 환경변수 (선택)
 
@@ -99,7 +100,7 @@ $env:SECRET_KEY="생성한 값"
 
 ## 감지 기준 조정
 
-**쓰러짐 감지** (`web/detector.py`)
+**쓰러짐 감지** (`web/detectors/fall.py`)
 
 ```python
 FALL_RATIO_THRESHOLD  = 1.2   # 바운딩박스 가로/세로 비율
@@ -107,7 +108,7 @@ SPINE_ANGLE_THRESHOLD = 45    # 척추 기울기 각도 (도)
 STILL_TIME_THRESHOLD  = 5.0   # 장시간 정지 판정 (초)
 ```
 
-**발열 감지** (`web/thermal_detector.py`)
+**발열 감지** (`web/services/thermal_camera.py`)
 
 ```python
 TEMP_WARN   = 45.0   # 주의 (°C)
@@ -127,7 +128,7 @@ TEMP_DANGER = 60.0   # 위험 (°C)
    ```
 4. 자동 동기화가 기존 PyTorch를 바꾸지 않도록 실행합니다.
    ```bash
-   uv run --no-sync web/app.py
+   uv run --no-sync python -m web
    ```
 
 ## 참고

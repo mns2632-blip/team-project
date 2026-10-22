@@ -3,8 +3,8 @@ __pycache__/
 *.py[cod]
 
 # Downloaded inference models
-yolov8n.pt
-pose_landmarker_lite.task
+web/models/yolov8n.pt
+web/models/pose_landmarker_lite.task
 
 # Local Wi-Fi credentials
 esp32_sensor/secrets.h
