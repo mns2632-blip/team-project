@@ -1,39 +1,48 @@
-import hmac
+from pathlib import Path
+from urllib.parse import parse_qs
 
-from flask import Blueprint, current_app, jsonify, redirect, render_template, request, session
-
-
-pages = Blueprint("pages", __name__)
-
-
-@pages.get("/")
-def login():
-    return render_template("login.html")
+from fastapi import APIRouter, Request
+from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.templating import Jinja2Templates
 
 
-@pages.get("/dashboard")
-def dashboard():
-    if not session.get("authenticated"):
-        return redirect("/")
-    return render_template("index.html")
+router = APIRouter()
+templates = Jinja2Templates(directory=Path(__file__).resolve().parents[1] / "templates")
 
 
-@pages.post("/login")
-def authenticate():
-    username = request.form.get("username", "").strip()
-    password = request.form.get("password", "")
-    expected_password = current_app.config["LOGIN_PASSWORD"]
-
-    if username == "admin" and hmac.compare_digest(
-        password.encode("utf-8"), expected_password.encode("utf-8")
-    ):
-        session["authenticated"] = True
-        return jsonify(success=True)
-
-    return jsonify(success=False, message="아이디 또는 비밀번호가 올바르지 않습니다."), 401
+@router.get("/")
+async def login_page(request: Request):
+    return templates.TemplateResponse(
+        request=request, name="login.html", context={}
+    )
 
 
-@pages.post("/logout")
-def logout():
-    session.clear()
-    return "", 204
+@router.get("/dashboard")
+async def dashboard(request: Request):
+    if not request.session.get("authenticated"):
+        return RedirectResponse("/", status_code=303)
+    return templates.TemplateResponse(
+        request=request, name="index.html", context={}
+    )
+
+
+@router.post("/login")
+async def authenticate(request: Request):
+    form = parse_qs((await request.body()).decode("utf-8"), keep_blank_values=True)
+    username = form.get("username", [""])[0].strip()
+    password = form.get("password", [""])[0]
+
+    if username == "admin" and password and password == request.app.state.login_password:
+        request.session["authenticated"] = True
+        return {"success": True}
+
+    return JSONResponse(
+        {"success": False, "message": "아이디 또는 비밀번호가 올바르지 않습니다."},
+        status_code=401,
+    )
+
+
+@router.post("/logout")
+async def logout(request: Request):
+    request.session.clear()
+    return JSONResponse({}, status_code=204)

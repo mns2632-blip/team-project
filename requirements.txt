@@ -1,8 +1,11 @@
 ultralytics
 mediapipe
 opencv-python
-flask
-flask-socketio
 pyserial
 numpy
 python-dotenv
+fastapi
+itsdangerous
+jinja2
+python-socketio
+uvicorn

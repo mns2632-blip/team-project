@@ -13,6 +13,8 @@ class SensorService:
         self.thermal_detector = thermal_detector
         self.sensor_data = {"temperature": 0.0, "humidity": 0.0, "gas": 0}
         self.sensor_connected = False
+        self._stop = threading.Event()
+        self._workers = []
 
     @staticmethod
     def find_esp32_port():
@@ -30,13 +32,13 @@ class SensorService:
     def read_sensor_esp32(self):
         port = self.find_esp32_port()
 
-        while True:
+        while not self._stop.is_set():
             try:
                 with serial.Serial(port, 9600, timeout=2) as ser:
                     print(f"[OK] ESP32 연결 완료 ({port})")
                     self.sensor_connected = True
 
-                    while True:
+                    while not self._stop.is_set():
                         line = ser.readline().decode("utf-8", errors="ignore").strip()
                         if not line or line.startswith("["):
                             continue
@@ -62,24 +64,24 @@ class SensorService:
             except serial.SerialException as error:
                 self.sensor_connected = False
                 print(f"[WARN] 시리얼 연결 끊김: {error} → 3초 후 재연결 (더미 모드 전환)")
-                time.sleep(3)
+                self._stop.wait(3)
             except Exception as error:
                 self.sensor_connected = False
                 print(f"[ERROR] {error} → 3초 후 재시도 (더미 모드 전환)")
-                time.sleep(3)
+                self._stop.wait(3)
 
     def generate_dummy_sensor(self):
         print("[INFO] 환경 센서 더미 모드 시작")
-        while True:
+        while not self._stop.is_set():
             if not self.sensor_connected:
                 self.sensor_data["temperature"] = round(random.uniform(20.0, 30.0), 1)
                 self.sensor_data["humidity"] = round(random.uniform(40.0, 70.0), 1)
                 self.sensor_data["gas"] = random.randint(50, 150)
                 self.socketio.emit("sensor_update", self.sensor_data)
-            time.sleep(3)
+            self._stop.wait(3)
 
     def read_thermal(self):
-        while True:
+        while not self._stop.is_set():
             try:
                 data = self.thermal_detector.read()
                 data["env_temperature"] = self.sensor_data["temperature"]
@@ -93,13 +95,24 @@ class SensorService:
                     )
             except Exception as error:
                 print(f"[THERMAL ERROR] {error}")
-            time.sleep(2)
+            self._stop.wait(2)
 
     def start(self):
+        if any(worker.is_alive() for worker in self._workers):
+            return
+        self._stop.clear()
         workers = (
             self.read_sensor_esp32,
             self.generate_dummy_sensor,
             self.read_thermal,
         )
         for worker in workers:
-            threading.Thread(target=worker, daemon=True).start()
+            thread = threading.Thread(target=worker, daemon=True)
+            self._workers.append(thread)
+            thread.start()
+
+    def stop(self):
+        self._stop.set()
+        for worker in self._workers:
+            worker.join(timeout=5)
+        self._workers.clear()

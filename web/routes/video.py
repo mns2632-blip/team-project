@@ -1,20 +1,25 @@
-from flask import Blueprint, Response, abort, current_app, session
-
-from web.services.camera import generate_frames
-
-
-video = Blueprint("video", __name__)
+from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import StreamingResponse
 
 
-@video.get("/video_feed")
-def video_feed():
-    if not session.get("authenticated"):
-        abort(401)
+router = APIRouter()
 
-    return Response(
-        generate_frames(
-            current_app.extensions["fall_detector"],
-            current_app.extensions["socketio"],
-        ),
-        mimetype="multipart/x-mixed-replace; boundary=frame",
+
+@router.get("/video_feed")
+async def video_feed(request: Request):
+    if not request.session.get("authenticated"):
+        raise HTTPException(status_code=401, detail="로그인이 필요합니다.")
+
+    pipeline = request.app.state.pipeline
+    return StreamingResponse(
+        pipeline.stream.iter_mjpeg(),
+        media_type="multipart/x-mixed-replace; boundary=frame",
+        headers={"Cache-Control": "no-store"},
     )
+
+
+@router.get("/metrics")
+async def video_metrics(request: Request):
+    if not request.session.get("authenticated"):
+        raise HTTPException(status_code=401, detail="로그인이 필요합니다.")
+    return request.app.state.pipeline.metrics()

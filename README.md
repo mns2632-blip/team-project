@@ -9,7 +9,7 @@ IoT 센서와 AI 카메라로 밀폐공간의 **환경 이상**(온도·습도·
 | 영상 | Logitech C920 + YOLOv8n + MediaPipe Pose | 사람 탐지, 쓰러짐·장시간 정지 판정 |
 | 환경 센서 | ESP32 + DHT22 + MQ-2/MQ-135 | 온도·습도·가스 측정 → USB 시리얼(JSON) 전송 |
 | 열화상 | Waveshare Thermal-45 (ESP32-S3) | 80×62 열화상 → Wi-Fi TCP(3333) 전송, 발열 감지 |
-| 서버 | Flask + Flask-SocketIO | 영상 스트리밍, 센서 데이터 실시간 전송 |
+| 서버 | FastAPI + Uvicorn + python-socketio | 비동기 웹 서버, 영상 스트리밍, 센서 데이터 실시간 전송 |
 | 대시보드 | HTML + Socket.IO + Chart.js | 실시간 모니터링 화면 |
 
 센서나 카메라가 연결되지 않아도 **더미 데이터 모드**로 자동 전환되어 대시보드를 확인할 수 있습니다.
@@ -20,9 +20,9 @@ IoT 센서와 AI 카메라로 밀폐공간의 **환경 이상**(온도·습도·
 .
 ├── web/
 │   ├── __main__.py         ← python -m web 실행 진입점
-│   ├── app.py              ← Flask 앱 생성 및 시작
-│   ├── routes/             ← 웹 페이지와 영상 스트림 라우트
-│   ├── services/           ← 카메라·센서 수집 서비스
+│   ├── app.py              ← FastAPI 앱, ASGI Socket.IO 및 서비스 수명 관리
+│   ├── routes/             ← 웹 페이지·영상 스트림·성능 지표 라우트
+│   ├── services/           ← 카메라 캡처·추론·스트림·센서 수집 서비스
 │   ├── detectors/          ← AI 감지 로직
 │   ├── models/             ← AI 모델 파일 (Git 제외)
 │   └── templates/          ← 로그인·관제 화면
@@ -51,6 +51,8 @@ uv run python -m web
 
 - 로그인 아이디는 `admin`이며, 비밀번호는 `.env`의 `LOGIN_PASSWORD`로 관리합니다.
 - `/dashboard`와 카메라 스트림은 로그인 후 사용할 수 있습니다.
+- `/metrics`에서 인증된 사용자는 카메라·추론·송출 FPS와 프레임/추론 지연을 확인할 수 있습니다.
+- 카메라 캡처, AI 추론(초당 최대 6회), JPEG 송출(초당 최대 30회)은 분리 실행됩니다. 각 스트림 접속자는 같은 최신 프레임과 공통 JPEG를 공유합니다.
 - AI 모델 파일(`yolov8n.pt`, `pose_landmarker_lite.task`)은 `web/models/`에 저장되며, 없으면 실행 시 자동 다운로드됩니다. (Git에는 포함하지 않음)
 - `uv sync`는 `.venv`에 잠금된 의존성을 설치하고, `uv run`은 해당 환경에서 앱을 실행합니다.
 
@@ -58,7 +60,7 @@ pip으로 설치해야 하는 환경에서는 `pip install -r requirements.txt` 
 
 ### 2. 카메라 번호 확인
 
-현재 확인된 카메라는 `/dev/video0`이며 640×480으로 스트리밍합니다. 다른 카메라 장치를 사용한다면 `web/services/camera.py`의 `cv2.VideoCapture(0)` 번호를 해당 장치에 맞게 변경하세요.
+현재 확인된 카메라는 `/dev/video0`이며 640×480으로 스트리밍합니다. 다른 카메라 장치를 사용한다면 `web/services/video_pipeline.py`의 `VideoPipeline`에 장치 번호를 전달하도록 변경하세요.
 
 ### 3. ESP32 환경 센서 (선택)
 
@@ -89,7 +91,8 @@ pip으로 설치해야 하는 환경에서는 `pip install -r requirements.txt` 
 | 이름 | 설명 | 기본값 |
 |---|---|---|
 | `LOGIN_PASSWORD` | 관리자 로그인 비밀번호 (`.env`에 필수 설정) | 기본값 없음 |
-| `SECRET_KEY` | Flask 세션 키. 시연·배포 기기에서만 설정 | 개발용 기본값 |
+| `SECRET_KEY` | 로그인 세션 서명 키. 운영 환경에서는 강력하고 고유한 값을 설정 | 개발용 기본값 |
+| `COOKIE_SECURE` | HTTPS 환경에서 세션 쿠키에 Secure 플래그 적용 (`true`/`false`) | `false` |
 
 ```bash
 .env 파일에서 LOGIN_PASSWORD 값을 원하는 비밀번호로 변경하세요.

@@ -1,51 +1,97 @@
+import asyncio
 import os
+from contextlib import asynccontextmanager
 from pathlib import Path
 
+import socketio
+import uvicorn
 from dotenv import load_dotenv
-from flask import Flask
-from flask_socketio import SocketIO
+from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+from starlette.middleware.sessions import SessionMiddleware
 
 from web.detectors.fall import FallDetector
+from web.routes import register_routes
 from web.services.sensors import SensorService
 from web.services.thermal_camera import ThermalDetector
-from web.routes import register_routes
-
-load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+from web.services.video_pipeline import VideoPipeline
 
 
-def create_app():
-    app = Flask(__name__, template_folder=Path(__file__).resolve().parent / "templates")
-    app.secret_key = os.environ.get("SECRET_KEY", "dev-only-change-me")
-    login_password = os.environ.get("LOGIN_PASSWORD")
-    if not login_password:
-        raise RuntimeError("LOGIN_PASSWORD must be set in the project .env file")
-    app.config["LOGIN_PASSWORD"] = login_password
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+load_dotenv(PROJECT_ROOT / ".env")
 
-    socketio = SocketIO(app, cors_allowed_origins="*")
-    fall_detector = FallDetector()
-    thermal_detector = ThermalDetector()
-    sensor_service = SensorService(
-        socketio,
-        thermal_detector,
-        os.environ.get("WIFI_SSID"),
-        os.environ.get("WIFI_PASS"),
+socket_server = socketio.AsyncServer(async_mode="asgi", cors_allowed_origins="*")
+
+
+class ThreadSafeSocketEmitter:
+    def __init__(self, server: socketio.AsyncServer, loop: asyncio.AbstractEventLoop):
+        self.server = server
+        self.loop = loop
+
+    def emit(self, event: str, data: dict) -> None:
+        future = asyncio.run_coroutine_threadsafe(self.server.emit(event, data), self.loop)
+        future.result(timeout=5)
+
+
+def create_app() -> FastAPI:
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        login_password = os.environ.get("LOGIN_PASSWORD")
+        if not login_password:
+            raise RuntimeError("LOGIN_PASSWORD must be set in the project .env file")
+
+        app.state.login_password = login_password
+        emitter = ThreadSafeSocketEmitter(socket_server, asyncio.get_running_loop())
+        fall_detector = FallDetector()
+        thermal_detector = ThermalDetector()
+        pipeline = VideoPipeline(fall_detector, emitter)
+        sensor_service = SensorService(emitter, thermal_detector)
+
+        app.state.pipeline = pipeline
+        app.state.sensor_service = sensor_service
+        pipeline.start()
+        sensor_service.start()
+        try:
+            yield
+        finally:
+            await asyncio.to_thread(sensor_service.stop)
+            await asyncio.to_thread(pipeline.stop)
+
+    application = FastAPI(title="밀폐공간 통합 안전 관제 시스템", lifespan=lifespan)
+    application.state.login_password = os.environ.get("LOGIN_PASSWORD", "")
+    application.state.pipeline = None
+    application.state.sensor_service = None
+    application.add_middleware(
+        SessionMiddleware,
+        secret_key=os.environ.get("SECRET_KEY", "dev-only-change-me"),
+        same_site="lax",
+        https_only=os.environ.get("COOKIE_SECURE", "false").lower() == "true",
     )
+    application.mount(
+        "/static",
+        StaticFiles(directory=Path(__file__).resolve().parent / "static"),
+        name="static",
+    )
+    register_routes(application)
+    return application
 
-    app.extensions["socketio"] = socketio
-    app.extensions["fall_detector"] = fall_detector
-    app.extensions["sensor_service"] = sensor_service
 
-    register_routes(app)
-    return app
+fastapi_app = create_app()
+app = socketio.ASGIApp(socket_server, other_asgi_app=fastapi_app)
 
 
-def main():
-    app = create_app()
-    sensor_service = app.extensions["sensor_service"]
-    sensor_service.start()
+@socket_server.event
+async def connect(sid, environ, auth):
+    pipeline = getattr(fastapi_app.state, "pipeline", None)
+    if pipeline:
+        await socket_server.emit(
+            "detection_update", {"status": pipeline.status()}, to=sid
+        )
 
-    print("=" * 40)
-    print("서버 시작: http://localhost:5000")
-    print("ID: admin  /  PW: .env의 LOGIN_PASSWORD")
-    print("=" * 40)
-    app.extensions["socketio"].run(app, host="0.0.0.0", port=5000, debug=False)
+
+def main() -> None:
+    uvicorn.run("web.app:app", host="0.0.0.0", port=5000, factory=False)
+
+
+if __name__ == "__main__":
+    main()
