@@ -58,8 +58,7 @@ pip으로 설치해야 하는 환경에서는 `pip install -r requirements.txt` 
 
 ### 2. 카메라 번호 확인
 
-`web/services/camera.py`의 `cv2.VideoCapture(1)`은 외장 카메라(C920) 기준입니다.
-노트북 내장 카메라만 있으면 `0`으로 바꿔서 실행하세요.
+현재 확인된 카메라는 `/dev/video0`이며 640×480으로 스트리밍합니다. 다른 카메라 장치를 사용한다면 `web/services/camera.py`의 `cv2.VideoCapture(0)` 번호를 해당 장치에 맞게 변경하세요.
 
 ### 3. ESP32 환경 센서 (선택)
 
