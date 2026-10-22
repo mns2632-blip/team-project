@@ -1,6 +1,9 @@
 import cv2
 import time
 import numpy as np
+from pathlib import Path
+
+WEB_DIR = Path(__file__).resolve().parent
 
 # ── MediaPipe 버전별 호환 처리 ──
 MEDIAPIPE_OK  = False
@@ -55,7 +58,7 @@ class FallDetector:
         # YOLOv8 초기화
         if YOLO_OK:
             try:
-                self.model = YOLO("yolov8n.pt")
+                self.model = YOLO(str(WEB_DIR / "yolov8n.pt"))
                 print("[OK] YOLOv8 로드 완료")
             except Exception as e:
                 print(f"[WARN] YOLOv8 로드 실패: {e}")
@@ -88,14 +91,14 @@ class FallDetector:
     # ─────────────────────────────────────
     def _init_pose_new(self):
         try:
-            import urllib.request, os
-            model_path = "pose_landmarker_lite.task"
-            if not os.path.exists(model_path):
+            import urllib.request
+            model_path = WEB_DIR / "pose_landmarker_lite.task"
+            if not model_path.exists():
                 print("[INFO] pose_landmarker 모델 다운로드 중...")
                 url = ("https://storage.googleapis.com/mediapipe-models/"
                        "pose_landmarker/pose_landmarker_lite/float16/1/"
                        "pose_landmarker_lite.task")
-                urllib.request.urlretrieve(url, model_path)
+                urllib.request.urlretrieve(url, str(model_path))
                 print("[OK] 모델 다운로드 완료")
 
             BaseOptions           = mp.tasks.BaseOptions
@@ -104,7 +107,7 @@ class FallDetector:
             VisionRunningMode     = mp.tasks.vision.RunningMode
 
             options = PoseLandmarkerOptions(
-                base_options=BaseOptions(model_asset_path=model_path),
+                base_options=BaseOptions(model_asset_path=str(model_path)),
                 running_mode=VisionRunningMode.IMAGE
             )
             self.pose = PoseLandmarker.create_from_options(options)
@@ -115,7 +118,7 @@ class FallDetector:
             self.pose = None
 
     # ─────────────────────────────────────
-    # 메인 탐지 함수 (app.py에서 호출)
+    # 메인 탐지 함수 (web/app.py에서 호출)
     # ─────────────────────────────────────
     def detect(self, frame):
         if self.model is None:

@@ -1,0 +1,17 @@
+[project]
+name = "team-project"
+version = "0.1.0"
+description = "밀폐공간 통합 안전 관제 시스템"
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    "flask",
+    "flask-socketio",
+    "mediapipe",
+    "numpy",
+    "opencv-python",
+    "pyserial",
+    "ultralytics",
+]
+
+[tool.uv]
+package = false

@@ -5,12 +5,13 @@ import threading
 import serial
 import serial.tools.list_ports
 import os
+from pathlib import Path
 from flask import Flask, Response, render_template
 from flask_socketio import SocketIO
 from detector import FallDetector
 from thermal_detector import ThermalDetector
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder=Path(__file__).resolve().parent / "templates")
 app.secret_key = os.environ.get("SECRET_KEY", "dev-only-change-me")
 socketio = SocketIO(app, cors_allowed_origins="*")
 
@@ -184,4 +185,3 @@ if __name__ == "__main__":
     print("ID: admin  /  PW: 1234")
     print("=" * 40)
     socketio.run(app, host="0.0.0.0", port=5000, debug=False)
-

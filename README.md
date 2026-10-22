@@ -18,13 +18,16 @@ IoT 센서와 AI 카메라로 밀폐공간의 **환경 이상**(온도·습도·
 
 ```
 .
-├── app.py                  ← Flask 서버 메인 (여기서 실행)
-├── detector.py             ← YOLOv8 + MediaPipe 쓰러짐 감지
-├── thermal_detector.py     ← 열화상 카메라 TCP 수신 / 발열 판정
+├── web/
+│   ├── app.py              ← Flask 서버 메인
+│   ├── detector.py         ← YOLOv8 + MediaPipe 쓰러짐 감지
+│   ├── thermal_detector.py ← 열화상 카메라 TCP 수신 / 발열 판정
+│   └── templates/
+│       ├── login.html      ← 로그인 화면
+│       └── index.html      ← 관제 대시보드
+├── pyproject.toml          ← Python 프로젝트 및 의존성 설정
+├── uv.lock                 ← 잠금된 의존성 버전
 ├── requirements.txt
-├── templates/
-│   ├── login.html          ← 로그인 화면
-│   └── index.html          ← 관제 대시보드
 └── esp32_sensor/
     ├── esp32_sensor.ino    ← ESP32 환경 센서 펌웨어
     └── secrets.example.h   ← Wi-Fi 설정 견본 (secrets.h로 복사해서 사용)
@@ -32,21 +35,25 @@ IoT 센서와 AI 카메라로 밀폐공간의 **환경 이상**(온도·습도·
 
 ## 처음 세팅
 
-### 1. 서버 실행
+### 1. 서버 실행 (uv)
 
 ```bash
-pip install -r requirements.txt
-python app.py
+# uv 설치: https://docs.astral.sh/uv/getting-started/installation/
+uv sync
+uv run web/app.py
 ```
 
 브라우저에서 http://localhost:5000 접속
 
 - 데모 계정: `admin` / `1234`
 - 모델 파일(`yolov8n.pt`, `pose_landmarker_lite.task`)은 첫 실행 시 자동 다운로드됩니다. (git에는 포함하지 않음)
+- `uv sync`는 `.venv`에 잠금된 의존성을 설치하고, `uv run`은 해당 환경에서 앱을 실행합니다.
+
+pip으로 설치해야 하는 환경에서는 `pip install -r requirements.txt` 후 `python web/app.py`로도 실행할 수 있습니다.
 
 ### 2. 카메라 번호 확인
 
-`app.py`의 `cv2.VideoCapture(1)`은 외장 카메라(C920) 기준입니다.
+`web/app.py`의 `cv2.VideoCapture(1)`은 외장 카메라(C920) 기준입니다.
 노트북 내장 카메라만 있으면 `0`으로 바꿔서 실행하세요.
 
 ### 3. ESP32 환경 센서 (선택)
@@ -56,7 +63,7 @@ python app.py
 3. Arduino IDE에서 라이브러리 설치: `DHT sensor library`, `ArduinoJson`
 4. ESP32에 업로드 후 USB로 PC/Jetson에 연결
 
-`app.py`가 ESP32 포트(CP210x, CH340 등)를 자동으로 찾습니다. 시리얼 속도는 **115200**입니다.
+`web/app.py`가 ESP32 포트(CP210x, CH340 등)를 자동으로 찾습니다. 시리얼 속도는 **115200**입니다.
 
 **배선**
 
@@ -69,9 +76,9 @@ python app.py
 
 1. Thermal-45 모듈에 Type-C 전원 연결
 2. 서버 PC/Jetson을 모듈 Wi-Fi(`Thermal_Camera_XXXX`)에 접속
-3. `app.py` 실행 시 `192.168.4.1:3333`으로 자동 연결
+3. `web/app.py` 실행 시 `192.168.4.1:3333`으로 자동 연결
 
-공유기(STA 모드)에 연결해서 쓸 때는 `thermal_detector.py`의 `THERMAL_IP`를 모듈 IP로 바꾸세요.
+공유기(STA 모드)에 연결해서 쓸 때는 `web/thermal_detector.py`의 `THERMAL_IP`를 모듈 IP로 바꾸세요.
 
 ## 환경변수 (선택)
 
@@ -92,7 +99,7 @@ $env:SECRET_KEY="생성한 값"
 
 ## 감지 기준 조정
 
-**쓰러짐 감지** (`detector.py`)
+**쓰러짐 감지** (`web/detector.py`)
 
 ```python
 FALL_RATIO_THRESHOLD  = 1.2   # 바운딩박스 가로/세로 비율
@@ -100,7 +107,7 @@ SPINE_ANGLE_THRESHOLD = 45    # 척추 기울기 각도 (도)
 STILL_TIME_THRESHOLD  = 5.0   # 장시간 정지 판정 (초)
 ```
 
-**발열 감지** (`thermal_detector.py`)
+**발열 감지** (`web/thermal_detector.py`)
 
 ```python
 TEMP_WARN   = 45.0   # 주의 (°C)
@@ -110,9 +117,18 @@ TEMP_DANGER = 60.0   # 위험 (°C)
 ## Jetson Nano 이식
 
 1. JetPack SDK 설치 (NVIDIA 공식 사이트)
-2. Jetson 전용 PyTorch wheel 설치
-3. 나머지는 동일하게 `pip install -r requirements.txt`
-4. `python app.py` 실행
+2. PyTorch가 uv 기본 설치본으로 대체되지 않도록 나머지 의존성을 먼저 설치합니다.
+   ```bash
+   uv sync --no-install-package torch --no-install-package torchvision
+   ```
+3. Jetson 호환 PyTorch wheel을 `.venv`에 설치합니다.
+   ```bash
+   uv pip install --python .venv/bin/python <Jetson용 PyTorch wheel>
+   ```
+4. 자동 동기화가 기존 PyTorch를 바꾸지 않도록 실행합니다.
+   ```bash
+   uv run --no-sync web/app.py
+   ```
 
 ## 참고
 

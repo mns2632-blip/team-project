@@ -7,7 +7,7 @@ Waveshare Thermal-45 Camera ESP32-S3 모듈 — Wi-Fi TCP 연결 버전
   2. Jetson Nano에서 모듈 Wi-Fi에 접속:
        - AP 모드: "Thermal_Camera_XXXX" SSID → IP 192.168.4.1
        - STA 모드: 공유기에 같이 연결 후 모듈 IP 확인
-  3. app.py 실행 → 자동 TCP 연결
+  3. web/app.py 실행 → 자동 TCP 연결
 
 데이터 포맷 (TCP port 3333):
   전체 프레임: 10,560 bytes
