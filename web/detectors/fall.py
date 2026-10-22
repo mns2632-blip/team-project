@@ -2,8 +2,27 @@ import cv2
 import time
 import numpy as np
 from pathlib import Path
+from dataclasses import dataclass
 
 MODEL_DIR = Path(__file__).resolve().parents[1] / "models"
+
+
+@dataclass(frozen=True)
+class DetectionBox:
+    x1: int
+    y1: int
+    x2: int
+    y2: int
+    color: tuple[int, int, int]
+    label: str
+
+
+@dataclass(frozen=True)
+class DetectionResult:
+    status: str
+    boxes: tuple[DetectionBox, ...] = ()
+    model_missing: bool = False
+
 
 # ── MediaPipe 버전별 호환 처리 ──
 MEDIAPIPE_OK = False
@@ -125,12 +144,13 @@ class FallDetector:
     # ─────────────────────────────────────
     # 메인 탐지 함수 (web/services/camera.py에서 호출)
     # ─────────────────────────────────────
-    def detect(self, frame):
+    def analyze(self, frame):
         if self.model is None:
-            return self._no_model_frame(frame), "YOLOv8 미설치"
+            return DetectionResult("YOLOv8 미설치", model_missing=True)
 
         results = self.model(frame, classes=[0], verbose=False)
         status = "정상"
+        boxes = []
 
         for r in results:
             for box in r.boxes:
@@ -167,14 +187,29 @@ class FallDetector:
                     color = (0, 255, 0)
                     label = f"OK  {ratio:.2f}"
 
-                cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
-                cv2.putText(
-                    frame, label, (x1, max(y1 - 8, 14)), cv2.FONT_HERSHEY_SIMPLEX, 0.55, color, 2
-                )
+                boxes.append(DetectionBox(x1, y1, x2, y2, color, label))
 
         self.status = status
-        self._draw_status(frame, status)
-        return frame, status
+        return DetectionResult(status, tuple(boxes))
+
+    def detect(self, frame):
+        result = self.analyze(frame)
+        for box in result.boxes:
+            cv2.rectangle(frame, (box.x1, box.y1), (box.x2, box.y2), box.color, 2)
+            cv2.putText(
+                frame,
+                box.label,
+                (box.x1, max(box.y1 - 8, 14)),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.55,
+                box.color,
+                2,
+            )
+
+        if result.model_missing:
+            self._no_model_frame(frame)
+        self._draw_status(frame, result.status)
+        return frame, result.status
 
     # ─────────────────────────────────────
     # 척추 기울기 계산
