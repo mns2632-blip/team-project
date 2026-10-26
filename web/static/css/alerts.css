@@ -1,0 +1,47 @@
+/* 이상 감지 로그 화면 */
+  /* ── 이상 감지 로그 3분할 ── */
+  .alert-log-wrap {
+    background:var(--panel); border:1px solid var(--gray200);
+    border-radius:10px; overflow:hidden;
+    display:flex; flex-direction:column;
+  }
+  .alert-log-cols {
+    display:grid; grid-template-columns:1fr 1fr 1fr;
+    flex:1; overflow:hidden;
+    border-top:1px solid var(--gray200);
+  }
+  .alert-log-col {
+    display:flex; flex-direction:column;
+    border-right:1px solid var(--gray200);
+    min-height:200px;
+  }
+  .alert-log-col:last-child { border-right:none; }
+  .alert-col-head {
+    padding:8px 12px;
+    border-bottom:1px solid var(--gray200);
+    font-size:11px; font-weight:600;
+    display:flex; align-items:center; gap:6px;
+    background:var(--gray50);
+    flex-shrink:0;
+  }
+  .alert-col-head.sensor  { color:var(--temp); }
+  .alert-col-head.ai      { color:var(--gas); }
+  .alert-col-head.thermal { color:var(--red); }
+  .alert-col-body {
+    flex:1; overflow-y:auto;
+    padding:4px 0;
+  }
+  .alert-col-entry {
+    padding:5px 10px; font-size:11px;
+    border-bottom:1px solid var(--gray100);
+    display:flex; flex-direction:column; gap:2px;
+  }
+  .alert-col-entry:hover { background:var(--gray50); }
+  .alert-col-time { font-size:10px; color:var(--gray400); }
+  .alert-col-msg  { font-weight:500; }
+  .alert-col-msg.danger { color:var(--red); }
+  .alert-col-msg.warn   { color:var(--yellow); }
+  .alert-col-empty {
+    padding:16px; text-align:center;
+    font-size:11px; color:var(--gray400);
+  }

@@ -1,0 +1,9 @@
+/* 시스템 설정 화면 */
+  .setting-card { background:var(--panel); border:1px solid var(--gray200); border-radius:10px; padding:20px 24px; }
+  .setting-title { font-size:14px; font-weight:600; color:var(--text); margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid var(--gray100); }
+  .setting-row { display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--gray100); }
+  .setting-row:last-child { border-bottom:none; }
+  .setting-label { font-size:13px; color:var(--gray800); }
+  .setting-sub   { font-size:11px; color:var(--gray400); margin-top:2px; }
+  .setting-input { background:var(--bg); border:1px solid var(--gray300); border-radius:6px; padding:6px 10px; font-size:13px; font-family:inherit; color:var(--text); outline:none; width:100px; text-align:right; }
+  .setting-input:focus { border-color:var(--blue2); }

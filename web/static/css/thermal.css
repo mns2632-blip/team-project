@@ -1,0 +1,40 @@
+/* 열화상 카메라 화면 */
+  /* ── 열화상 카메라 UI ── */
+  .thermal-panel {
+    background:var(--panel); border:1px solid var(--gray200);
+    border-radius:10px; overflow:hidden;
+    display:flex; flex-direction:column;
+  }
+  .thermal-body { padding:14px; display:flex; flex-direction:column; gap:10px; }
+  .thermal-stats { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
+  .thermal-stat {
+    background:var(--gray50); border:1px solid var(--gray200);
+    border-radius:8px; padding:10px; text-align:center;
+  }
+  .thermal-stat-label { font-size:10px; color:var(--gray500); margin-bottom:4px; }
+  .thermal-stat-val   { font-size:18px; font-weight:700; }
+  .thermal-stat-val.max    { color:var(--red); }
+  .thermal-stat-val.avg    { color:var(--temp); }
+  .thermal-stat-val.status { font-size:13px; }
+  .thermal-stat-val.ok     { color:var(--green); }
+  .thermal-stat-val.warn   { color:var(--yellow); }
+  .thermal-stat-val.danger { color:var(--red); }
+  .thermal-canvas-wrap {
+    position:relative; background:#0A0D12;
+    border-radius:8px; overflow:hidden;
+    display:flex; align-items:center; justify-content:center;
+    height:160px;
+  }
+  #thermal-canvas { width:100%; height:100%; image-rendering:pixelated; }
+  .thermal-crosshair {
+    position:absolute; pointer-events:none;
+    font-size:10px; color:#fff; font-family:monospace;
+    background:rgba(0,0,0,0.5); padding:2px 6px; border-radius:3px;
+  }
+  .thermal-badge {
+    display:inline-flex; align-items:center; gap:5px;
+    padding:4px 10px; border-radius:20px; font-size:11px; font-weight:500;
+  }
+  .thermal-badge.ok     { background:var(--grn-lt); color:var(--green); }
+  .thermal-badge.warn   { background:var(--yel-lt); color:var(--yellow); }
+  .thermal-badge.danger { background:var(--red-lt); color:var(--red); animation:blink 0.5s infinite; }
