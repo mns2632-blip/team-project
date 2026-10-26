@@ -5,13 +5,17 @@ async function logout() {
 }
 
 // ── 페이지 전환 ──
+function goPage(pageId) {
+  const el=[...document.querySelectorAll(".subnav-item")].find(i=>i.getAttribute("onclick").includes("'"+pageId+"'"));
+  if(el) switchPage(el,pageId);
+}
 function switchPage(el, pageId) {
   document.querySelectorAll(".subnav-item").forEach(i => i.classList.remove("active"));
   el.classList.add("active");
   document.querySelectorAll(".page-view").forEach(p => p.classList.remove("active"));
   document.getElementById("page-"+pageId).classList.add("active");
   if(pageId==="history") renderHistoryTable();
-  if(pageId==="alerts")  renderAlertLogTable();
+  if(pageId==="monitor") setTimeout(drawFP,0);
 }
 
 // ── 전체 이상 로그 ──
@@ -26,34 +30,89 @@ function renderHistoryTable() {
   for(let i=0;i<len;i++) {
     const t=history.temp[i]||{}, h=history.humid[i]||{}, g=history.gas[i]||{};
     const tV=t.val!==undefined?t.val:'--', hV=h.val!==undefined?h.val:'--', gV=g.val!==undefined?g.val:'--';
-    const worst = tV>40||hV>85||gV>500?'danger':tV>32||gV>300?'warn':'ok';
+    const worst = [statusOf('temp',tV),statusOf('humid',hV),statusOf('gas',gV)].reduce(worse,'ok');
     const badge = worst==='danger'?'<span style="color:var(--red);font-weight:600;">위험</span>':worst==='warn'?'<span style="color:var(--yellow);font-weight:600;">주의</span>':'<span style="color:var(--green);">정상</span>';
     rows.push('<tr><td>'+(t.time||h.time||g.time||'--')+'</td><td>'+tV+'</td><td>'+hV+'</td><td>'+gV+'</td><td>'+badge+'</td></tr>');
   }
   tbody.innerHTML = rows.reverse().join('');
 }
 
-// ── 이상 감지 로그 테이블 ──
-function renderAlertLogTable() {
-  const tbody = document.getElementById("alertlog-tbody");
-  if(!allAlertLogs.length) { tbody.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--gray400);padding:24px;">이상 감지 이력이 없습니다.</td></tr>'; return; }
-  tbody.innerHTML = allAlertLogs.slice().reverse().map(l => {
-    const typeLabel = l.sensor==='cam'?'AI 탐지':l.sensor==='temp'?'온도':l.sensor==='humid'?'습도':'가스';
-    const badge = l.type==='danger'?'<span style="color:var(--red);font-weight:600;">위험</span>':'<span style="color:var(--yellow);font-weight:600;">주의</span>';
-    return '<tr><td>'+l.time+'</td><td>'+typeLabel+'</td><td>'+l.msg+'</td><td>'+badge+'</td></tr>';
-  }).join('');
+// ── 임계값 (시스템 설정에서 변경, 브라우저에 저장) ──
+const THR = { tempWarn:32, tempDanger:40, humidHigh:85, humidLow:20, gasWarn:300, gasDanger:500, overlay:true };
+const THR_FIELDS = { tempWarn:"set-temp-warn", tempDanger:"set-temp-danger", humidHigh:"set-humid-high", humidLow:"set-humid-low", gasWarn:"set-gas-warn", gasDanger:"set-gas-danger" };
+try { Object.assign(THR, JSON.parse(localStorage.getItem("thresholds")||"{}")); } catch {}
+Object.entries(THR_FIELDS).forEach(([k,id]) => { document.getElementById(id).value = THR[k]; });
+document.getElementById("set-overlay").checked = THR.overlay;
+
+function statusOf(sensor, v) {
+  if(typeof v!=="number") return "ok";
+  if(sensor==="temp")  return v>THR.tempDanger?"danger":v>THR.tempWarn?"warn":"ok";
+  if(sensor==="humid") return v>THR.humidHigh?"danger":v<THR.humidLow?"warn":"ok";
+  return v>THR.gasDanger?"danger":v>THR.gasWarn?"warn":"ok";
+}
+const RANK = {ok:0, warn:1, danger:2};
+function worse(a,b){ return RANK[b]>RANK[a]?b:a; }
+
+function renderThresholdLabels() {
+  document.getElementById("temp-thr").textContent  = `주의 ${THR.tempWarn} · 위험 ${THR.tempDanger}°C`;
+  document.getElementById("humid-thr").textContent = `주의 <${THR.humidLow} · 위험 ${THR.humidHigh}%`;
+  document.getElementById("gas-thr").textContent   = `주의 ${THR.gasWarn} · 위험 ${THR.gasDanger}ppm`;
+}
+renderThresholdLabels();
+
+function setMeter(id, val, max, st) {
+  const el=document.getElementById(id);
+  el.style.width = Math.max(0, Math.min(100, val/max*100))+"%";
+  el.className = st==="ok"?"":st;
 }
 
-// ── 오버레이 ──
-let overlayTimer = null;
+function saveSettings() {
+  Object.entries(THR_FIELDS).forEach(([k,id]) => {
+    const v=parseFloat(document.getElementById(id).value);
+    if(!isNaN(v)) THR[k]=v;
+  });
+  THR.overlay = document.getElementById("set-overlay").checked;
+  try { localStorage.setItem("thresholds", JSON.stringify(THR)); } catch {}
+  renderThresholdLabels();
+  const msg=document.getElementById("settings-msg");
+  msg.textContent="저장했습니다. 이 브라우저에만 적용됩니다.";
+  setTimeout(()=>{ msg.textContent=""; }, 4000);
+}
+
+// ── 경보: 위험은 확인할 때까지 모달, 주의는 8초 토스트 ──
+const ICON_ALERT = document.getElementById("ov-icon").innerHTML;
+let overlayTimer = null, elapsedTimer = null, alarmSince = 0, alarmKey = "";
+const ackedUntil = {};   // 같은 경보를 확인 후 30초간 다시 띄우지 않음
+
 function showOverlay(type, title, msg, chips) {
-  if(!document.getElementById("set-overlay")?.checked) return;
+  if(!THR.overlay) return;
   const ov = document.getElementById("alert-overlay");
-  ov.className = "alert-overlay active "+type;
-  document.getElementById("ov-icon").textContent  = type==='danger'?'🚨':'⚠️';
+  const isModal = ov.classList.contains("modal");
+  if(type==="danger") {
+    if((ackedUntil[msg]||0) > Date.now()) return;
+  } else if(isModal) return;   // 위험 경보가 떠 있으면 주의는 덮어쓰지 않음
+  ov.className = "alert-overlay active "+type+(type==="danger"?" modal":"");
+  document.getElementById("ov-icon").innerHTML  = ICON_ALERT;
   document.getElementById("ov-title").textContent = title;
   document.getElementById("ov-msg").textContent   = msg;
   document.getElementById("ov-chips").innerHTML   = chips.map(c=>'<div class="ov-chip">'+c+'</div>').join('');
+  if(overlayTimer) clearTimeout(overlayTimer);
+
+  if(type==="danger") {
+    if(!isModal || alarmKey!==msg) { alarmSince = Date.now(); alarmKey = msg; }
+    document.getElementById("ov-backdrop").classList.add("active");
+    document.body.classList.add("alarm");
+    const tickElapsed = () => {
+      const sec=Math.floor((Date.now()-alarmSince)/1000);
+      document.getElementById("ov-elapsed").textContent =
+        "경과 "+String(Math.floor(sec/60)).padStart(2,"0")+":"+String(sec%60).padStart(2,"0");
+    };
+    tickElapsed();
+    if(!elapsedTimer) elapsedTimer = setInterval(tickElapsed, 1000);
+    if(!isModal) document.getElementById("ov-ack").focus();
+    return;
+  }
+  document.getElementById("ov-elapsed").textContent = "";
   // 진행 바 애니메이션 (8초)
   const bar = document.getElementById("ov-progress-bar");
   bar.style.transition = 'none';
@@ -64,16 +123,63 @@ function showOverlay(type, title, msg, chips) {
       bar.style.width = '0%';
     });
   });
-  if(overlayTimer) clearTimeout(overlayTimer);
   overlayTimer = setTimeout(dismissOverlay, 8000);
 }
+function ackOverlay() {
+  ackedUntil[alarmKey] = Date.now() + 30000;
+  addLog("경보 확인: "+alarmKey, "info");
+  dismissOverlay();
+}
 function dismissOverlay() {
-  document.getElementById("alert-overlay").classList.remove("active");
+  document.getElementById("alert-overlay").classList.remove("active","modal");
+  document.getElementById("ov-backdrop").classList.remove("active");
+  document.body.classList.remove("alarm");
   if(overlayTimer) clearTimeout(overlayTimer);
+  if(elapsedTimer) { clearInterval(elapsedTimer); elapsedTimer = null; }
+}
+document.addEventListener("keydown", e => {
+  if(e.key==="Escape" && !document.getElementById("alert-overlay").classList.contains("modal")) dismissOverlay();
+});
+
+// ── 종합 상태 배너 ──
+let thermalStatus = "ok", thermalLabel = "";
+const STATUS_TAG = {ok:"정상", warn:"주의", danger:"위험"};
+function updateStatusBanner() {
+  const issues = { danger:[], warn:[] };
+  const names = { temp:"온도", humid:"습도", gas:"가스", cam:"AI 탐지" };
+  Object.entries(sensorStatus).forEach(([k,st]) => { if(st!=="ok") issues[st].push(names[k]); });
+  if(thermalStatus!=="ok") issues[thermalStatus].push(thermalLabel);
+  const level = issues.danger.length?"danger":issues.warn.length?"warn":"ok";
+  document.getElementById("status-banner").className = "status-banner "+level;
+  document.getElementById("status-tag").textContent = STATUS_TAG[level];
+  document.getElementById("status-text").textContent =
+    level==="ok" ? "모든 항목이 정상 범위입니다."
+    : [...issues.danger.map(n=>n+" 위험"), ...issues.warn.map(n=>n+" 주의")].join(" · ")+" — 현장을 확인하세요.";
 }
 
-// ── 설정 저장 ──
-function saveSettings() { alert("설정이 저장되었습니다."); }
+// ── 장치 연결 상태 ──
+function setDev(key, st, text) {
+  document.getElementById("dev-"+key).className = "dev-dot "+st;
+  document.getElementById("dev-"+key+"-val").textContent = text;
+}
+let lastSensorAt = 0;
+setInterval(() => {
+  if(!lastSensorAt) return;
+  const age = Math.round((Date.now()-lastSensorAt)/1000);
+  setDev("sensor", age<10?"ok":"danger", age<10?"수신 중":age+"초 끊김");
+}, 1000);
+
+async function pollMetrics() {
+  try {
+    const r = await fetch("/metrics");
+    if(!r.ok) throw 0;
+    const m = await r.json();
+    setDev("cam", m.camera_available?"ok":"danger", m.camera_available?Math.round(m.camera_fps)+" fps":"오프라인");
+    document.getElementById("cam-fps").textContent =
+      `카메라 ${Math.round(m.camera_fps)} fps · 추론 ${Math.round(m.inference_fps)} fps`;
+  } catch { setDev("cam", "danger", "확인 불가"); }
+}
+pollMetrics(); setInterval(pollMetrics, 5000);
 
 // ── 시계 ──
 function tick() {
@@ -94,10 +200,10 @@ const fp = document.getElementById("floorplan");
 const fctx = fp.getContext("2d");
 
 const sensorPos = {
-  temp:  { rx:0.22, ry:0.38, label:"온도", icon:"🌡", color:"#EA580C" },
-  humid: { rx:0.65, ry:0.38, label:"습도", icon:"💧", color:"#0284C7" },
-  gas:   { rx:0.44, ry:0.68, label:"가스", icon:"☁", color:"#7C3AED" },
-  cam:   { rx:0.80, ry:0.22, label:"카메라", icon:"📷", color:"#1757C2" },
+  temp:  { rx:0.22, ry:0.38, label:"온도", color:"#FF8A4C" },
+  humid: { rx:0.65, ry:0.38, label:"습도", color:"#4FB3F0" },
+  gas:   { rx:0.44, ry:0.68, label:"가스", color:"#A78BFA" },
+  cam:   { rx:0.80, ry:0.22, label:"카메라", color:"#5B9CF6" },
 };
 
 let sensorStatus = { temp:"ok", humid:"ok", gas:"ok", cam:"ok" };
@@ -110,22 +216,22 @@ function drawFP() {
   fctx.clearRect(0,0,W,H);
 
   // 배경
-  fctx.fillStyle="#F8FAFC"; fctx.fillRect(0,0,W,H);
+  fctx.fillStyle="#0E1116"; fctx.fillRect(0,0,W,H);
 
   // 그리드
-  fctx.strokeStyle="#E2E8F0"; fctx.lineWidth=1;
+  fctx.strokeStyle="#161B22"; fctx.lineWidth=1;
   for(let x=0;x<W;x+=25){fctx.beginPath();fctx.moveTo(x,0);fctx.lineTo(x,H);fctx.stroke();}
   for(let y=0;y<H;y+=25){fctx.beginPath();fctx.moveTo(0,y);fctx.lineTo(W,y);fctx.stroke();}
 
   // 방 외벽
   const rm = {x:W*0.08,y:H*0.12,w:W*0.84,h:H*0.76};
-  fctx.fillStyle="#fff";
+  fctx.fillStyle="#161B22";
   fctx.fillRect(rm.x,rm.y,rm.w,rm.h);
-  fctx.strokeStyle="#CBD5E1"; fctx.lineWidth=2;
+  fctx.strokeStyle="#2E3744"; fctx.lineWidth=2;
   fctx.strokeRect(rm.x,rm.y,rm.w,rm.h);
 
   // 방 라벨
-  fctx.fillStyle="#94A3B8"; fctx.font="11px Pretendard,sans-serif";
+  fctx.fillStyle="#94A3B8"; fctx.font="11px 'IBM Plex Sans KR',sans-serif";
   fctx.textAlign="left";
   fctx.fillText("배터리 보관·시험 공간", rm.x+10, rm.y+16);
 
@@ -133,16 +239,16 @@ function drawFP() {
   fctx.strokeStyle="#94A3B8"; fctx.lineWidth=1.5;
   const doorX = rm.x + rm.w*0.42;
   fctx.beginPath(); fctx.moveTo(doorX,rm.y); fctx.lineTo(doorX+rm.w*0.16,rm.y); fctx.stroke();
-  fctx.fillStyle="#94A3B8"; fctx.font="9px Pretendard"; fctx.textAlign="center";
+  fctx.fillStyle="#94A3B8"; fctx.font="9px 'IBM Plex Sans KR'"; fctx.textAlign="center";
   fctx.fillText("출입문", doorX+rm.w*0.08, rm.y-4);
 
   // 배터리 박스
   const bx=rm.x+16, by=rm.y+24, bw=70, bh=50;
-  fctx.fillStyle="#F1F5F9";
+  fctx.fillStyle="#1B222C";
   fctx.fillRect(bx,by,bw,bh);
-  fctx.strokeStyle="#CBD5E1"; fctx.lineWidth=1;
+  fctx.strokeStyle="#2E3744"; fctx.lineWidth=1;
   fctx.strokeRect(bx,by,bw,bh);
-  fctx.fillStyle="#64748B"; fctx.font="10px Pretendard"; fctx.textAlign="center";
+  fctx.fillStyle="#9AA4B2"; fctx.font="10px 'IBM Plex Sans KR'"; fctx.textAlign="center";
   fctx.fillText("배터리", bx+bw/2, by+bh/2+4);
 
   // 중앙 허브
@@ -152,7 +258,7 @@ function drawFP() {
   Object.entries(sensorPos).forEach(([key,s]) => {
     const x=rm.x+rm.w*s.rx, y=rm.y+rm.h*s.ry;
     const st = sensorStatus[key];
-    const c = st==="danger"?"#DC2626":st==="warn"?"#D97706":s.color;
+    const c = st==="danger"?"#F2545B":st==="warn"?"#F2A93B":s.color;
 
     // 연결선
     fctx.strokeStyle=c+"33"; fctx.lineWidth=1.5;
@@ -168,10 +274,10 @@ function drawFP() {
     // 원
     fctx.beginPath(); fctx.arc(x,y,10,0,Math.PI*2);
     fctx.fillStyle=c; fctx.fill();
-    fctx.strokeStyle="#fff"; fctx.lineWidth=2; fctx.stroke();
+    fctx.strokeStyle="#161B22"; fctx.lineWidth=2; fctx.stroke();
 
     // 라벨
-    fctx.fillStyle=c; fctx.font="bold 10px Pretendard"; fctx.textAlign="center";
+    fctx.fillStyle=c; fctx.font="bold 10px 'IBM Plex Sans KR'"; fctx.textAlign="center";
     fctx.fillText(s.label, x, y-14);
 
     // 값
@@ -180,35 +286,37 @@ function drawFP() {
     if(key==="humid") v=document.getElementById("humid-val").textContent+"%";
     if(key==="gas")   v=document.getElementById("gas-val").textContent+"ppm";
     if(key==="cam")   v="LIVE";
-    fctx.fillStyle="#64748B"; fctx.font="9px Pretendard";
+    fctx.fillStyle="#9AA4B2"; fctx.font="9px 'IBM Plex Sans KR'";
     fctx.fillText(v, x, y+22);
   });
 
   // 허브
   fctx.beginPath(); fctx.arc(cx,cy,10,0,Math.PI*2);
-  fctx.fillStyle=var2hex("--blue2","#2563EB"); fctx.fill();
-  fctx.strokeStyle="#fff"; fctx.lineWidth=2; fctx.stroke();
-  fctx.fillStyle="#fff"; fctx.font="bold 8px Pretendard"; fctx.textAlign="center";
+  fctx.fillStyle="#5B9CF6"; fctx.fill();
+  fctx.strokeStyle="#161B22"; fctx.lineWidth=2; fctx.stroke();
+  fctx.fillStyle="#071426"; fctx.font="bold 8px 'IBM Plex Sans KR'"; fctx.textAlign="center";
   fctx.fillText("HUB", cx, cy+3);
 }
 
-function var2hex(v,fallback){ return fallback; }
 setInterval(drawFP,2000); window.addEventListener("resize",drawFP); setTimeout(drawFP,100);
 
 // ── Chart.js 메인 차트 ──
-const chartColors = { temp:"#EA580C", humid:"#0284C7", gas:"#7C3AED" };
+const chartColors = { temp:"#FF8A4C", humid:"#4FB3F0", gas:"#A78BFA" };
 const chartLabels = { temp:"온도 (°C)", humid:"습도 (%RH)", gas:"가스 농도 (ppm)" };
 
 const cCtx = document.getElementById("sensor-chart").getContext("2d");
 const mainChart = new Chart(cCtx, {
   type:"line",
-  data:{ labels:[], datasets:[{ data:[], borderColor:"#EA580C", backgroundColor:"rgba(234,88,12,0.08)", borderWidth:2, pointRadius:2, fill:true, tension:0.4 }] },
+  data:{ labels:[], datasets:[
+    { data:[], borderColor:"#FF8A4C", backgroundColor:"rgba(255,138,76,0.08)", borderWidth:2, pointRadius:2, fill:true, tension:0.4 },
+    { data:[], borderColor:"#F2A93B", borderWidth:1, borderDash:[5,4], pointRadius:0, fill:false }
+  ] },
   options:{
     animation:false, responsive:true,
     plugins:{ legend:{ display:false } },
     scales:{
-      x:{ ticks:{ color:"#94A3B8", font:{size:10} }, grid:{ color:"#F1F5F9" } },
-      y:{ ticks:{ color:"#94A3B8", font:{size:10} }, grid:{ color:"#F1F5F9" } }
+      x:{ ticks:{ color:"#7D8794", font:{size:10} }, grid:{ color:"#232A33" } },
+      y:{ ticks:{ color:"#7D8794", font:{size:10} }, grid:{ color:"#232A33" } }
     }
   }
 });
@@ -228,6 +336,10 @@ function updateMainChart(sensor) {
   mainChart.data.datasets[0].data = h.map(d=>d.val);
   mainChart.data.datasets[0].borderColor = chartColors[sensor];
   mainChart.data.datasets[0].backgroundColor = chartColors[sensor]+"14";
+  const lim = {temp:THR.tempWarn, humid:THR.humidHigh, gas:THR.gasWarn}[sensor];
+  mainChart.data.datasets[1].data = h.map(()=>lim);
+  mainChart.data.datasets[1].label = sensor==="humid"?"위험 기준":"주의 기준";
+  mainChart.data.datasets[1].borderColor = sensor==="humid"?"#F2545B":"#F2A93B";
   mainChart.update();
 }
 
@@ -235,13 +347,13 @@ function updateMainChart(sensor) {
 const sCtx = document.getElementById("side-chart").getContext("2d");
 const sideChart = new Chart(sCtx, {
   type:"line",
-  data:{ labels:[], datasets:[{ data:[], borderColor:"#EA580C", backgroundColor:"rgba(234,88,12,0.08)", borderWidth:2, pointRadius:2, fill:true, tension:0.4 }] },
+  data:{ labels:[], datasets:[{ data:[], borderColor:"#FF8A4C", backgroundColor:"rgba(255,138,76,0.08)", borderWidth:2, pointRadius:2, fill:true, tension:0.4 }] },
   options:{
     animation:false, responsive:true,
     plugins:{ legend:{ display:false } },
     scales:{
-      x:{ ticks:{ color:"#94A3B8", font:{size:9} }, grid:{ color:"#F1F5F9" } },
-      y:{ ticks:{ color:"#94A3B8", font:{size:9} }, grid:{ color:"#F1F5F9" } }
+      x:{ ticks:{ color:"#7D8794", font:{size:9} }, grid:{ color:"#232A33" } },
+      y:{ ticks:{ color:"#7D8794", font:{size:9} }, grid:{ color:"#232A33" } }
     }
   }
 });
@@ -306,15 +418,18 @@ const socket = io();
 socket.on("connect", () => {
   document.getElementById("conn-dot").style.background="var(--green)";
   document.getElementById("conn-label").textContent="서버 연결됨";
+  setDev("server","ok","연결됨");
   addLog("서버 연결 성공","ok");
 });
 socket.on("disconnect", () => {
   document.getElementById("conn-dot").style.background="var(--red)";
   document.getElementById("conn-label").textContent="연결 끊김";
+  setDev("server","danger","끊김");
 });
 
 socket.on("sensor_update", (data) => {
   const now=new Date().toLocaleTimeString("ko-KR",{hour12:false});
+  lastSensorAt = Date.now();
   const t=data.temperature, h=data.humidity, g=data.gas;
 
   const push=(key,val)=>{
@@ -328,35 +443,27 @@ socket.on("sensor_update", (data) => {
   document.getElementById("gas-val").textContent   = g;
 
   // 상태 판정
-  const tS = t>40?"danger":t>32?"warn":"ok";
-  const hS = h>85||h<20?(h>85?"danger":"warn"):"ok";
-  const gS = g>500?"danger":g>300?"warn":"ok";
+  const tS = statusOf("temp",t), hS = statusOf("humid",h), gS = statusOf("gas",g);
   sensorStatus.temp=tS; sensorStatus.humid=hS; sensorStatus.gas=gS;
 
-  setBadge("temp-badge",  tS, t>40?"위험":t>32?"주의":"정상");
-  setBadge("humid-badge", hS, h>85?"위험":h<20?"주의":"정상");
-  setBadge("gas-badge",   gS, g>500?"위험":g>300?"주의":"정상");
+  setBadge("temp-badge",  tS, STATUS_TAG[tS]);
+  setBadge("humid-badge", hS, STATUS_TAG[hS]);
+  setBadge("gas-badge",   gS, STATUS_TAG[gS]);
+  setMeter("temp-meter",  t, THR.tempDanger, tS);
+  setMeter("humid-meter", h, THR.humidHigh, hS);
+  setMeter("gas-meter",   g, THR.gasDanger, gS);
 
-  if(t>40)       { pushAlert("temp",  `온도 위험: ${t}°C`,"danger",now); logAllAlert("temp",`온도 위험: ${t}°C`,"danger",now); }
-  else if(t>32)  { pushAlert("temp",  `온도 주의: ${t}°C`,"warn",now);   logAllAlert("temp",`온도 주의: ${t}°C`,"warn",now); }
-  if(h>85)       { pushAlert("humid", `고습도 위험: ${h}%RH`,"danger",now); logAllAlert("humid",`고습도 위험: ${h}%RH`,"danger",now); }
-  if(g>500)      { pushAlert("gas",   `가스 위험: ${g}ppm`,"danger",now);   logAllAlert("gas",`가스 위험: ${g}ppm`,"danger",now); }
-  else if(g>300) { pushAlert("gas",   `가스 주의: ${g}ppm`,"warn",now);     logAllAlert("gas",`가스 주의: ${g}ppm`,"warn",now); }
+  if(tS!=="ok") { const m=`온도 ${STATUS_TAG[tS]}: ${t}°C`; pushAlert("temp",m,tS,now); logAllAlert("temp",m,tS,now); }
+  if(hS!=="ok") { const m=(hS==="danger"?"고습도 위험":"저습도 주의")+`: ${h}%RH`; pushAlert("humid",m,hS,now); logAllAlert("humid",m,hS,now); }
+  if(gS!=="ok") { const m=`가스 ${STATUS_TAG[gS]}: ${g}ppm`; pushAlert("gas",m,gS,now); logAllAlert("gas",m,gS,now); }
 
-  // 오버레이 표시
-  const dangerChips = [];
-  if(t>40)  dangerChips.push(`🌡 온도: ${t}°C`);
-  if(h>85)  dangerChips.push(`💧 습도: ${h}%RH`);
-  if(g>500) dangerChips.push(`☁ 가스: ${g}ppm`);
-  if(dangerChips.length>0) showOverlay('danger','위 험','환경 이상이 감지되었습니다!', dangerChips);
-  else {
-    const warnChips = [];
-    if(t>32)  warnChips.push(`🌡 온도: ${t}°C`);
-    if(h<20)  warnChips.push(`💧 습도: ${h}%RH`);
-    if(g>300) warnChips.push(`☁ 가스: ${g}ppm`);
-    if(warnChips.length>0) showOverlay('warn','주 의','환경 주의 수준이 감지되었습니다.', warnChips);
-  }
+  // 경보 표시
+  const chips = st => [["온도",t,"°C",tS],["습도",h,"%RH",hS],["가스",g,"ppm",gS]]
+    .filter(c=>c[3]===st).map(c=>`${c[0]}: ${c[1]}${c[2]}`);
+  if(chips("danger").length) showOverlay('danger','위험 경보','환경 이상이 감지되었습니다', chips("danger"));
+  else if(chips("warn").length) showOverlay('warn','주의','환경 주의 수준이 감지되었습니다.', chips("warn"));
 
+  updateStatusBanner();
   updateMainChart(currentSensor);
   if(sideOpen){ updateSideChart(currentSensor); updateStats(currentSensor); }
   drawFP();
@@ -369,30 +476,32 @@ socket.on("detection_update", (data) => {
   const now2=new Date().toLocaleTimeString("ko-KR",{hour12:false});
   if(data.status.includes("쓰러짐")) {
     banner.classList.add("danger");
-    icon.innerHTML="⚠ 경고 — 쓰러짐이 감지되었습니다.";
+    icon.textContent="위험 — 쓰러짐이 감지되었습니다.";
     addLog("쓰러짐 감지됨!","danger"); sensorStatus.cam="danger";
-    setBadge("ai-badge","danger","위험"); document.getElementById("ai-status").textContent="위험";
+    setBadge("ai-badge","danger"); document.getElementById("ai-status").textContent="쓰러짐";
     logAllAlert("cam","쓰러짐 감지됨!","danger",now2);
     addColLog("log-ai","쓰러짐 감지됨!","danger");
-    showOverlay('danger','위 험','작업자 쓰러짐이 감지되었습니다!',['🤖 AI 탐지: 쓰러짐']);
+    showOverlay('danger','위험 경보','작업자 쓰러짐 감지',['AI 탐지: 쓰러짐']);
   } else if(data.status.includes("정지")) {
     banner.classList.add("warn");
-    icon.innerHTML="! 주의 — 장시간 정지가 감지되었습니다.";
+    icon.textContent="주의 — 장시간 정지가 감지되었습니다.";
     addLog("장시간 정지 감지","warn"); sensorStatus.cam="warn";
-    setBadge("ai-badge","warn","주의"); document.getElementById("ai-status").textContent="주의";
+    setBadge("ai-badge","warn"); document.getElementById("ai-status").textContent="장시간 정지";
     logAllAlert("cam","장시간 정지 감지","warn",now2);
     addColLog("log-ai","장시간 정지 감지","warn");
-    showOverlay('warn','주 의','작업자 장시간 정지가 감지되었습니다.',['🤖 AI 탐지: 장시간 정지']);
+    showOverlay('warn','주의','작업자 장시간 정지가 감지되었습니다.',['AI 탐지: 장시간 정지']);
   } else {
-    icon.innerHTML="✅ 정상 — 이상 행동이 감지되지 않았습니다.";
+    icon.textContent=data.status==="정상"?"정상 — 이상 행동이 감지되지 않았습니다.":data.status;
     sensorStatus.cam="ok";
-    setBadge("ai-badge","ok","이상 없음"); document.getElementById("ai-status").textContent="정상";
+    setBadge("ai-badge","ok",""); document.getElementById("ai-badge").innerHTML='AI <span id="ai-status">'+(data.status==="정상"?"정상":data.status)+'</span>';
   }
+  updateStatusBanner();
 });
 
 function setBadge(id, cls, text) {
   const el=document.getElementById(id);
   el.className="sc-badge "+cls;
+  if(id==="ai-badge") { el.innerHTML='AI <span id="ai-status"></span>'; return; }
   el.textContent=text;
 }
 
@@ -407,6 +516,7 @@ function pushAlert(sensor,msg,type,time) {
   alertLogs[sensor].push({msg,type,time});
   if(alertLogs[sensor].length>100) alertLogs[sensor].shift();
   addLog(msg, type);
+  addColLog("log-sensor", msg, type);
   if(sideOpen&&currentSensor===sensor) renderAlertList(sensor);
 }
 
@@ -441,7 +551,7 @@ socket.on("thermal_update", (data) => {
   document.getElementById("th-hot-row").textContent = data.hot_pos[0];
   document.getElementById("th-hot-col").textContent = data.hot_pos[1];
   document.getElementById("thermal-hotspot").textContent =
-    `📍 (${data.hot_pos[0]}, ${data.hot_pos[1]}) : ${data.max_temp}°C`;
+    `(${data.hot_pos[0]}, ${data.hot_pos[1]}) : ${data.max_temp}°C`;
 
   // 환경 센서값 (ESP32 DHT22 + MQ)
   if (data.env_temperature !== undefined) {
@@ -454,16 +564,26 @@ socket.on("thermal_update", (data) => {
   const connChip = document.getElementById("th-conn-chip");
   const connText = document.getElementById("th-conn-text");
   if (data.connected) {
-    connChip.textContent = "🟢 Wi-Fi 연결됨";
+    connChip.textContent = "Wi-Fi 연결됨";
+    setDev("thermal","ok","연결됨");
     connChip.style.color = "#86EFAC";
     connText.textContent = "연결됨";
     connText.style.color = "var(--green)";
   } else {
-    connChip.textContent = "🟡 더미 모드";
+    connChip.textContent = "더미 모드";
+    setDev("thermal","warn","더미 모드");
     connChip.style.color = "#FDE68A";
     connText.textContent = "더미 모드";
     connText.style.color = "var(--yellow)";
   }
+
+  // 메인 KPI + 종합 상태
+  const thSt = data.status==="발열 위험"?"danger":data.status==="발열 주의"?"warn":"ok";
+  document.getElementById("kpi-th-val").textContent = data.max_temp.toFixed(1);
+  setBadge("kpi-th-badge", thSt, data.status);
+  setMeter("kpi-th-meter", data.max_temp, 60, thSt);
+  thermalStatus = thSt; thermalLabel = "열화상 발열";
+  updateStatusBanner();
 
   // 페이지 배지
   const pageBadge   = document.getElementById("th-page-badge");
@@ -478,8 +598,8 @@ socket.on("thermal_update", (data) => {
     // 로그 + 오버레이
     addLog(`열화상: 발열 위험 — ${data.max_temp}°C`, "danger");
     addColLog("log-thermal", `발열 위험 — ${data.max_temp}°C 위치(${data.hot_pos[0]},${data.hot_pos[1]})`, "danger");
-    showOverlay('danger','위 험','배터리 발열 위험이 감지되었습니다!',
-      [`🌡 최고온도: ${data.max_temp}°C`, `📍 위치: (${data.hot_pos[0]}, ${data.hot_pos[1]})`]);
+    showOverlay('danger','위험 경보','배터리 발열 위험 감지',
+      [`최고온도: ${data.max_temp}°C`, `위치: (${data.hot_pos[0]}, ${data.hot_pos[1]})`]);
     pushThAlert(data, "danger", now);
   } else if (data.status === "발열 주의") {
     pageBadge.classList.add("warn");
@@ -528,7 +648,7 @@ function renderThAlertList() {
     <div style="padding:8px 12px;border-bottom:1px solid var(--gray100);font-size:11px;display:flex;flex-direction:column;gap:2px;">
       <span style="color:var(--gray400);">${a.time}</span>
       <span style="font-weight:500;color:${a.type==='danger'?'var(--red)':'var(--yellow)'};">
-        ${a.type==='danger'?'🔴 발열 위험':'🟡 발열 주의'} — ${a.max.toFixed(1)}°C
+        ${a.type==='danger'?'발열 위험':'발열 주의'} — ${a.max.toFixed(1)}°C
       </span>
       <span style="color:var(--gray500);">위치: (${a.pos[0]}, ${a.pos[1]})</span>
     </div>`).join('');
