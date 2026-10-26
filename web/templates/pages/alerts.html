@@ -1,0 +1,52 @@
+<!-- 이상 감지 로그 페이지 -->
+<div class="page-view" id="page-alerts">
+  <div class="page-header">
+    <div class="page-header-title">이상 감지 로그</div>
+    <div class="page-header-sub">센서 · AI 탐지 · 열화상 이상 이벤트 기록입니다.</div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;flex:1;overflow:hidden;">
+
+    <!-- 센서 이상 로그 -->
+    <div class="alert-log-wrap" style="min-height:400px;">
+      <div class="panel-head">
+        <div class="panel-title" style="color:var(--temp);">센서 이상</div>
+      </div>
+      <div class="alert-log-cols" style="grid-template-columns:1fr;">
+        <div class="alert-log-col" style="border-right:none;">
+          <div class="alert-col-body" id="log-sensor" style="max-height:400px;overflow-y:auto;">
+            <div class="alert-col-empty">이상 없음</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI 탐지 로그 -->
+    <div class="alert-log-wrap" style="min-height:400px;">
+      <div class="panel-head">
+        <div class="panel-title" style="color:var(--gas);">AI 탐지</div>
+      </div>
+      <div class="alert-log-cols" style="grid-template-columns:1fr;">
+        <div class="alert-log-col" style="border-right:none;">
+          <div class="alert-col-body" id="log-ai" style="max-height:400px;overflow-y:auto;">
+            <div class="alert-col-empty">이상 없음</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 열화상 로그 -->
+    <div class="alert-log-wrap" style="min-height:400px;">
+      <div class="panel-head">
+        <div class="panel-title" style="color:var(--red);">열화상</div>
+      </div>
+      <div class="alert-log-cols" style="grid-template-columns:1fr;">
+        <div class="alert-log-col" style="border-right:none;">
+          <div class="alert-col-body" id="log-thermal" style="max-height:400px;overflow-y:auto;">
+            <div class="alert-col-empty">이상 없음</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>

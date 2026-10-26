@@ -1,0 +1,158 @@
+<!-- 열화상 카메라 페이지 -->
+<div class="page-view" id="page-thermal">
+  <div class="page-header">
+    <div class="page-header-title">열화상 카메라 모니터링</div>
+    <div class="page-header-sub">Waveshare ESP32-S3 · 80×62 px · Wi-Fi TCP · 45° FOV</div>
+  </div>
+
+  <!-- 상태 요약 카드 3개 -->
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+    <div class="summary-card">
+      <div class="sc-icon thermal"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.4-.5-2-1-3-1.1-2.1-.2-4 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.2.4-2.3 1-3.3.3 1.4 1.2 2.8 2.5 2.8z"/></svg></div>
+      <div>
+        <div class="sc-label">최고 온도</div>
+        <div><span class="sc-val temp" id="th-max-val">--.-</span><span class="sc-unit">°C</span></div>
+        <div class="sc-badge ok" id="th-max-badge">정상</div>
+      </div>
+    </div>
+    <div class="summary-card">
+      <div class="sc-icon temp"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 14.76V4a2 2 0 0 0-4 0v10.76a4 4 0 1 0 4 0z"/></svg></div>
+      <div>
+        <div class="sc-label">평균 온도</div>
+        <div><span class="sc-val" style="color:var(--temp);" id="th-avg-val">--.-</span><span class="sc-unit">°C</span></div>
+      </div>
+    </div>
+    <div class="summary-card">
+      <div class="sc-icon humid"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 14.76V4a2 2 0 0 0-4 0v10.76a4 4 0 1 0 4 0z"/></svg></div>
+      <div>
+        <div class="sc-label">최저 온도</div>
+        <div><span class="sc-val" style="color:var(--humid);" id="th-min-val">--.-</span><span class="sc-unit">°C</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 히트맵 + 정보 -->
+  <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;flex:1;min-height:0;">
+
+    <!-- 히트맵 패널 -->
+    <div style="background:var(--panel);border:1px solid var(--gray200);border-radius:10px;overflow:hidden;display:flex;flex-direction:column;">
+      <div class="panel-head">
+        <div class="panel-title">
+          열화상 히트맵
+          <span style="font-size:12px;color:var(--gray500);font-weight:400;">80×62 픽셀</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div class="thermal-badge ok" id="th-page-badge">정상</div>
+          <div class="panel-badge-live"><div class="live-dot"></div>LIVE</div>
+        </div>
+      </div>
+      <div style="flex:1;padding:16px;display:flex;flex-direction:column;gap:12px;">
+        <!-- 히트맵 캔버스 -->
+        <div style="position:relative;background:#0F172A;border-radius:10px;overflow:hidden;flex:1;display:flex;align-items:center;justify-content:center;min-height:280px;">
+          <canvas id="thermal-canvas" width="80" height="62"
+            style="width:100%;height:100%;image-rendering:pixelated;display:block;"></canvas>
+          <!-- 핫스팟 오버레이 -->
+          <div id="thermal-hotspot"
+            style="position:absolute;bottom:10px;right:10px;background:rgba(0,0,0,0.65);
+                   backdrop-filter:blur(4px);color:#fff;font-size:11px;font-family:monospace;
+                   padding:4px 10px;border-radius:5px;">
+            (--, --) : --°C
+          </div>
+          <!-- 연결 상태 -->
+          <div id="th-conn-chip"
+            style="position:absolute;top:10px;left:10px;background:rgba(0,0,0,0.6);
+                   backdrop-filter:blur(4px);color:#94A3B8;font-size:11px;
+                   padding:3px 8px;border-radius:4px;">
+            대기 중...
+          </div>
+        </div>
+        <!-- 컬러 스케일 범례 -->
+        <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--gray500);">
+          <span>차가움</span>
+          <div style="flex:1;height:10px;border-radius:5px;
+            background:linear-gradient(to right,#00BFFF,#00FF80,#FFFF00,#FF4000);"></div>
+          <span>뜨거움</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 오른쪽: 상세 정보 + 발열 이력 -->
+    <div style="display:flex;flex-direction:column;gap:12px;">
+
+      <!-- 핫스팟 상세 -->
+      <div style="background:var(--panel);border:1px solid var(--gray200);border-radius:10px;padding:16px;">
+        <div class="side-section-title" style="margin-bottom:12px;">최고 발열 위치</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div style="background:var(--gray50);border:1px solid var(--gray200);border-radius:8px;padding:12px;text-align:center;">
+            <div style="font-size:11px;color:var(--gray500);margin-bottom:4px;">행 (Row)</div>
+            <div style="font-size:22px;font-weight:700;color:var(--red);" id="th-hot-row">--</div>
+          </div>
+          <div style="background:var(--gray50);border:1px solid var(--gray200);border-radius:8px;padding:12px;text-align:center;">
+            <div style="font-size:11px;color:var(--gray500);margin-bottom:4px;">열 (Col)</div>
+            <div style="font-size:22px;font-weight:700;color:var(--red);" id="th-hot-col">--</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 환경 센서 -->
+      <div style="background:var(--panel);border:1px solid var(--gray200);border-radius:10px;padding:16px;">
+        <div class="side-section-title" style="margin-bottom:12px;">환경 센서 (ESP32)</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+          <div style="background:var(--gray50);border:1px solid var(--gray200);border-radius:8px;padding:10px;text-align:center;">
+            <div style="font-size:10px;color:var(--gray500);margin-bottom:3px;">온도</div>
+            <div style="font-size:18px;font-weight:700;color:var(--temp);" id="th-env-temp">--.-</div>
+            <div style="font-size:10px;color:var(--gray400);">°C</div>
+          </div>
+          <div style="background:var(--gray50);border:1px solid var(--gray200);border-radius:8px;padding:10px;text-align:center;">
+            <div style="font-size:10px;color:var(--gray500);margin-bottom:3px;">습도</div>
+            <div style="font-size:18px;font-weight:700;color:var(--humid);" id="th-env-humid">--.-</div>
+            <div style="font-size:10px;color:var(--gray400);">%RH</div>
+          </div>
+          <div style="background:var(--gray50);border:1px solid var(--gray200);border-radius:8px;padding:10px;text-align:center;">
+            <div style="font-size:10px;color:var(--gray500);margin-bottom:3px;">가스</div>
+            <div style="font-size:18px;font-weight:700;color:var(--gas);" id="th-env-gas">---</div>
+            <div style="font-size:10px;color:var(--gray400);">ppm</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 연결 정보 -->
+      <div style="background:var(--panel);border:1px solid var(--gray200);border-radius:10px;padding:16px;">
+        <div class="side-section-title" style="margin-bottom:12px;">모듈 정보</div>
+        <div style="font-size:12px;display:flex;flex-direction:column;gap:8px;color:var(--gray600);">
+          <div style="display:flex;justify-content:space-between;">
+            <span>모듈</span><span style="color:var(--text);font-weight:500;">Waveshare ESP32-S3</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;">
+            <span>해상도</span><span style="color:var(--text);font-weight:500;">80 × 62 px</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;">
+            <span>통신</span><span style="color:var(--text);font-weight:500;">Wi-Fi TCP :3333</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;">
+            <span>FOV</span><span style="color:var(--text);font-weight:500;">45°</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;">
+            <span>갱신 주기</span><span style="color:var(--text);font-weight:500;">2초</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;">
+            <span>연결 상태</span>
+            <span id="th-conn-text" style="color:var(--gray400);font-weight:500;">대기 중</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 발열 이상 이력 -->
+      <div style="background:var(--panel);border:1px solid var(--gray200);border-radius:10px;overflow:hidden;flex:1;display:flex;flex-direction:column;">
+        <div class="panel-head">
+          <div class="panel-title" style="font-size:12px;">발열 이상 이력</div>
+          <span style="font-size:11px;color:var(--gray400);">최근 20건</span>
+        </div>
+        <div style="flex:1;overflow-y:auto;" id="th-alert-list">
+          <div style="padding:16px;text-align:center;font-size:11px;color:var(--gray400);">이상 없음</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
