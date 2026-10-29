@@ -29,7 +29,13 @@ class ThreadSafeSocketEmitter:
         self.loop = loop
 
     def emit(self, event: str, data: dict) -> None:
-        future = asyncio.run_coroutine_threadsafe(self.server.emit(event, data), self.loop)
+        coroutine = self.server.emit(event, data)
+        try:
+            future = asyncio.run_coroutine_threadsafe(coroutine, self.loop)
+        except RuntimeError:
+            # 서버 종료로 이벤트 루프가 닫힌 뒤 백그라운드 스레드가 보내는 이벤트는 버린다.
+            coroutine.close()
+            return
         future.result(timeout=5)
 
 
@@ -53,9 +59,13 @@ def create_app() -> FastAPI:
         sensor_service.start()
         try:
             yield
-        finally:
-            await asyncio.to_thread(sensor_service.stop)
-            await asyncio.to_thread(pipeline.stop)
+        except BaseException:
+            # 강제 종료(^C 두 번)로 lifespan이 취소되면 await를 할 수 없으므로 동기로 정리한다.
+            sensor_service.stop()
+            pipeline.stop()
+            raise
+        await asyncio.to_thread(sensor_service.stop)
+        await asyncio.to_thread(pipeline.stop)
 
     application = FastAPI(title="밀폐공간 통합 안전 관제 시스템", lifespan=lifespan)
     application.state.login_password = os.environ.get("LOGIN_PASSWORD", "")
