@@ -89,8 +89,21 @@ async def connect(sid, environ, auth):
         )
 
 
+class GracefulServer(uvicorn.Server):
+    def handle_exit(self, sig, frame) -> None:
+        # uvicorn은 열린 요청이 끝난 뒤에야 lifespan 종료를 실행하므로,
+        # 끝나지 않는 MJPEG 스트림을 먼저 닫아야 종료가 멈추지 않는다.
+        pipeline = getattr(fastapi_app.state, "pipeline", None)
+        if pipeline:
+            pipeline.stream.close_streams()
+        super().handle_exit(sig, frame)
+
+
 def main() -> None:
-    uvicorn.run("web.app:app", host="0.0.0.0", port=5000, factory=False)
+    config = uvicorn.Config(
+        "web.app:app", host="0.0.0.0", port=5000, timeout_graceful_shutdown=3
+    )
+    GracefulServer(config).run()
 
 
 if __name__ == "__main__":

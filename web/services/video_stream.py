@@ -26,6 +26,9 @@ class VideoStreamService:
         if self._thread:
             self._thread.join(timeout=3)
 
+    def close_streams(self) -> None:
+        self._stop.set()
+
     def iter_mjpeg(self):
         sequence = 0
         while not self._stop.is_set():
