@@ -1,0 +1,77 @@
+<!-- 이상 감지 로그 · 대응 관리 -->
+<main class="page" id="page-logs">
+  <header class="page-head">
+    <div><h1>이상 감지 로그</h1><div class="page-sub">AI 탐지·센서 임계치 초과 이벤트를 확인하고 처리 상태를 기록합니다</div></div>
+    <div class="page-actions"><button type="button" class="btn" onclick="exportLogCSV()">CSV 내보내기</button></div>
+  </header>
+
+  <section class="lg-stats" aria-label="요약">
+    <div class="card lg-stat"><div class="row"><span class="dot danger"></span>위험</div><div><span class="num" id="lg-n-danger">0</span><span class="muted"> 건</span></div></div>
+    <div class="card lg-stat"><div class="row"><span class="dot warn"></span>주의</div><div><span class="num" id="lg-n-warn">0</span><span class="muted"> 건</span></div></div>
+    <div class="card lg-stat"><div class="row"><span class="dot" style="background:#18181B;"></span>처리 필요</div><div><span class="num" id="lg-n-open">0</span><span class="muted"> 건</span></div></div>
+    <div class="card lg-stat"><div class="row"><span class="dot ok"></span>종결</div><div><span class="num" id="lg-n-done">0</span><span class="muted"> 건</span></div></div>
+  </section>
+
+  <section class="card lg-filters" aria-label="필터">
+    <div class="field"><label for="lg-q">검색</label><input class="input" id="lg-q" type="search" placeholder="메시지, 이벤트 번호"></div>
+    <div class="field"><label for="lg-src">감지 출처</label>
+      <select class="input" id="lg-src"><option value="">전체</option><option>AI 카메라</option><option>환경 센서</option><option>열화상</option><option>시스템</option></select></div>
+    <div class="seg" role="group" aria-label="등급" id="lg-level">
+      <button type="button" data-f="all" aria-pressed="true">전체</button>
+      <button type="button" data-f="danger" aria-pressed="false">위험</button>
+      <button type="button" data-f="warn" aria-pressed="false">주의</button>
+      <button type="button" data-f="open" aria-pressed="false">미처리만</button>
+    </div>
+  </section>
+
+  <section class="lg-body">
+    <div class="card lg-list-card">
+      <div class="card-head"><h2>이벤트 목록</h2><span class="muted" style="font-size:12px;" id="lg-count">0건</span></div>
+      <ul class="lg-list" id="lg-list" aria-label="이벤트 목록"></ul>
+    </div>
+
+    <article class="card lg-detail" id="lg-detail" aria-label="선택한 이벤트 대응">
+      <div class="empty" id="lg-detail-empty">왼쪽 목록에서 이벤트를 선택하세요</div>
+      <div id="lg-detail-body" hidden>
+        <div class="lg-detail-head">
+          <span class="badge" id="lg-d-level"></span>
+          <span class="muted num" id="lg-d-id"></span>
+          <span class="badge" id="lg-d-status" style="margin-left:auto;"></span>
+        </div>
+        <div class="card-pad" style="gap:16px;">
+          <div>
+            <h2 class="lg-d-title" id="lg-d-msg"></h2>
+            <dl class="kv" style="margin-top:12px;">
+              <dt>감지 시각</dt><dd class="num" id="lg-d-time"></dd>
+              <dt>감지 출처</dt><dd id="lg-d-src"></dd>
+              <dt>위치</dt><dd id="lg-d-zone"></dd>
+            </dl>
+          </div>
+          <div>
+            <div class="muted" style="font-size:12px;margin-bottom:6px;">감지 시점 센서 값</div>
+            <div class="lg-metrics" id="lg-d-metrics"></div>
+          </div>
+          <div class="row" style="flex-wrap:wrap;">
+            <button type="button" class="btn btn-danger" id="lg-act-start" onclick="setEventStatus('active')">확인 · 대응 시작</button>
+            <button type="button" class="btn btn-primary" id="lg-act-done" onclick="setEventStatus('done')">처리 완료</button>
+            <button type="button" class="btn" id="lg-act-fp" onclick="setEventStatus('fp')">오탐으로 종결</button>
+            <button type="button" class="btn" id="lg-act-reopen" onclick="setEventStatus('open')">다시 열기</button>
+          </div>
+          <section class="lg-report">
+            <h2>종결 보고</h2>
+            <div class="field"><label for="lg-cause">원인 분류</label>
+              <select class="input" id="lg-cause"><option value="">선택하세요</option><option>유해가스 누출</option><option>고온·고습</option><option>작업자 건강 이상</option><option>장비 이상</option><option>오탐</option><option>기타</option></select></div>
+            <div class="field"><label for="lg-memo">조치 내용 · 재발 방지 대책</label>
+              <textarea class="input" id="lg-memo" rows="3" placeholder="조치 내용과 재발 방지 대책을 기록하세요"></textarea></div>
+            <div class="row"><button type="button" class="btn" onclick="saveEventReport()">기록 저장</button><span class="muted" style="font-size:12px;" id="lg-saved"></span></div>
+          </section>
+          <section>
+            <h2>대응 타임라인</h2>
+            <ul class="lg-timeline" id="lg-d-history"></ul>
+          </section>
+        </div>
+      </div>
+    </article>
+  </section>
+  <p class="muted" style="font-size:12px;margin:0;">이벤트와 처리 기록은 이 브라우저에 저장됩니다 (최근 500건).</p>
+</main>

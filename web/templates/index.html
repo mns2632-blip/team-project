@@ -6,473 +6,61 @@
 <title>밀폐공간 안전 관제 시스템</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/static/css/dashboard.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+{% for name in ["common", "monitor", "camera", "sensors", "logs", "thermal", "settings"] %}
+<link rel="stylesheet" href="{{ asset_url('css/' ~ name ~ '.css') }}">
+{% endfor %}
 </head>
 <body>
 
-<!-- 헤더 -->
-<header>
-  <div class="hdr-logo">
-    <div class="hdr-logo-icon">🛡</div>
-    <div>
-      <div class="hdr-logo-text">SafetyMonitor</div>
-      <div class="hdr-logo-sub">Confined Space IoT System</div>
-    </div>
-  </div>
-  <div class="hdr-breadcrumb">
-    홈 › <span>실시간 관제</span>
-  </div>
-  <div class="hdr-right">
-    <div class="hdr-time" id="clock">--:--:--</div>
-    <div class="conn-badge">
-      <div class="conn-dot" id="conn-dot"></div>
-      <span id="conn-label">연결 중...</span>
-    </div>
-    <button class="logout-btn" onclick="logout()">로그아웃</button>
-  </div>
-</header>
+<div class="app">
 
-<!-- 서브 네비 -->
-<div class="subnav">
-  <div class="subnav-item active" onclick="switchPage(this,'monitor')">실시간 관제</div>
-  <div class="subnav-item" onclick="switchPage(this,'thermal')">🌡 열화상 카메라</div>
-  <div class="subnav-item" onclick="switchPage(this,'history')">센서 이력</div>
-  <div class="subnav-item" onclick="switchPage(this,'alerts')">이상 감지 로그</div>
-  <div class="subnav-item" onclick="switchPage(this,'settings')">시스템 설정</div>
-</div>
-
-<!-- 위험/경고 토스트 -->
-<div class="alert-overlay" id="alert-overlay">
-  <div class="ov-header">
-    <span class="ov-icon" id="ov-icon">⚠️</span>
-    <span class="ov-title" id="ov-title">위험</span>
-    <button class="ov-dismiss" onclick="dismissOverlay()" title="닫기">✕</button>
-  </div>
-  <div class="ov-body">
-    <div class="ov-msg" id="ov-msg">이상이 감지되었습니다</div>
-    <div class="ov-chips" id="ov-chips"></div>
-  </div>
-  <div class="ov-progress"><div class="ov-progress-bar" id="ov-progress-bar"></div></div>
-</div>
-
-<!-- 레이아웃 -->
-<div class="layout">
-
-  <!-- 메인 (실시간 관제) -->
-  <div class="main page-view active" id="page-monitor">
-
-    <!-- 요약 카드 -->
-    <div class="summary-bar">
-      <div class="summary-card clickable" id="card-temp" onclick="openSide('temp')">
-        <div class="sc-icon temp">🌡</div>
-        <div>
-          <div class="sc-label">온도</div>
-          <div><span class="sc-val temp" id="temp-val">--.-</span><span class="sc-unit">°C</span></div>
-          <div class="sc-badge ok" id="temp-badge">정상</div>
-        </div>
-      </div>
-      <div class="summary-card clickable" id="card-humid" onclick="openSide('humid')">
-        <div class="sc-icon humid">💧</div>
-        <div>
-          <div class="sc-label">습도</div>
-          <div><span class="sc-val humid" id="humid-val">--.-</span><span class="sc-unit">%RH</span></div>
-          <div class="sc-badge ok" id="humid-badge">정상</div>
-        </div>
-      </div>
-      <div class="summary-card clickable" id="card-gas" onclick="openSide('gas')">
-        <div class="sc-icon gas">☁</div>
-        <div>
-          <div class="sc-label">가스 농도</div>
-          <div><span class="sc-val gas" id="gas-val">---</span><span class="sc-unit">ppm</span></div>
-          <div class="sc-badge ok" id="gas-badge">정상</div>
-        </div>
-      </div>
-      <div class="summary-card">
-        <div class="sc-icon ai">🤖</div>
-        <div>
-          <div class="sc-label">AI 탐지 상태</div>
-          <div class="sc-val ai" id="ai-status">정상</div>
-          <div class="sc-badge ok" id="ai-badge">이상 없음</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 중단 -->
-    <div class="mid-row">
-
-      <!-- 영상 -->
-      <div class="video-panel">
-        <div class="panel-head">
-          <div class="panel-title">
-            📷 AI 탐지 영상
-            <span style="font-size:12px;color:var(--gray500);font-weight:400;">CAM-00 · /dev/video0</span>
-          </div>
-          <div class="panel-badge-live"><div class="live-dot"></div>LIVE</div>
-        </div>
-        <div class="video-wrap">
-          <img src="/video_feed" alt="AI Camera Feed" onload="document.getElementById('cam-offline-msg').style.display='none'" onerror="document.getElementById('cam-offline-msg').style.display='flex'">
-          <div id="cam-offline-msg" style="position:absolute;width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#94A3B8;font-size:13px;">
-          카메라 오프라인
-          </div>
-          <div class="video-info">
-            <div class="vinfo-chip">640×480</div>
-            <div class="vinfo-chip">YOLOv8 + MediaPipe</div>
-          </div>
-        </div>
-        <div class="det-banner" id="det-banner">
-          <span class="det-icon">✅</span>
-          <span id="det-text">정상 — 이상 행동이 감지되지 않았습니다.</span>
-        </div>
-      </div>
-
-      <!-- 평면도 -->
-      <div class="map-panel">
-        <div class="panel-head">
-          <div class="panel-title">📍 센서 위치 (평면도)</div>
-        </div>
-        <canvas class="fp-canvas" id="floorplan"></canvas>
-      </div>
-
-    </div>
-
-    <!-- 하단 -->
-    <div class="bot-row" style="grid-template-columns:1fr 1fr;">
-
-      <!-- 센서 차트 -->
-      <div class="chart-panel">
-        <div class="panel-head">
-          <div class="panel-title">📈 실시간 센서 그래프</div>
-        </div>
-        <div class="chart-tabs">
-          <div class="ctab active" id="ctab-temp"  onclick="switchChart('temp')">온도</div>
-          <div class="ctab"        id="ctab-humid" onclick="switchChart('humid')">습도</div>
-          <div class="ctab"        id="ctab-gas"   onclick="switchChart('gas')">가스</div>
-        </div>
-        <div class="chart-body">
-          <canvas id="sensor-chart" height="200"></canvas>
-        </div>
-      </div>
-
-      <!-- 이벤트 로그 -->
-      <div class="log-panel">
-        <div class="panel-head">
-          <div class="panel-title">📋 이벤트 로그</div>
-          <span style="font-size:11px;color:var(--gray400);">최근 10개</span>
-        </div>
-        <div class="log-body" id="log-body"></div>
-      </div>
-
-    </div>
-  </div>
-
-  <!-- 열화상 카메라 페이지 -->
-  <div class="page-view" id="page-thermal">
-    <div class="page-header">
-      <div class="page-header-title">🌡 열화상 카메라 모니터링</div>
-      <div class="page-header-sub">Waveshare ESP32-S3 · 80×62 px · Wi-Fi TCP · 45° FOV</div>
-    </div>
-
-    <!-- 상태 요약 카드 3개 -->
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
-      <div class="summary-card">
-        <div class="sc-icon temp">🔴</div>
-        <div>
-          <div class="sc-label">최고 온도</div>
-          <div><span class="sc-val temp" id="th-max-val">--.-</span><span class="sc-unit">°C</span></div>
-          <div class="sc-badge ok" id="th-max-badge">정상</div>
-        </div>
-      </div>
-      <div class="summary-card">
-        <div class="sc-icon" style="background:#FFF7ED;">🟠</div>
-        <div>
-          <div class="sc-label">평균 온도</div>
-          <div><span class="sc-val" style="color:var(--temp);" id="th-avg-val">--.-</span><span class="sc-unit">°C</span></div>
-        </div>
-      </div>
-      <div class="summary-card">
-        <div class="sc-icon" style="background:#F0F9FF;">🔵</div>
-        <div>
-          <div class="sc-label">최저 온도</div>
-          <div><span class="sc-val" style="color:var(--humid);" id="th-min-val">--.-</span><span class="sc-unit">°C</span></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 히트맵 + 정보 -->
-    <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;flex:1;min-height:0;">
-
-      <!-- 히트맵 패널 -->
-      <div style="background:#fff;border:1px solid var(--gray200);border-radius:10px;overflow:hidden;display:flex;flex-direction:column;">
-        <div class="panel-head">
-          <div class="panel-title">
-            열화상 히트맵
-            <span style="font-size:12px;color:var(--gray500);font-weight:400;">80×62 픽셀</span>
-          </div>
-          <div style="display:flex;align-items:center;gap:8px;">
-            <div class="thermal-badge ok" id="th-page-badge">정상</div>
-            <div class="panel-badge-live"><div class="live-dot"></div>LIVE</div>
-          </div>
-        </div>
-        <div style="flex:1;padding:16px;display:flex;flex-direction:column;gap:12px;">
-          <!-- 히트맵 캔버스 -->
-          <div style="position:relative;background:#0F172A;border-radius:10px;overflow:hidden;flex:1;display:flex;align-items:center;justify-content:center;min-height:280px;">
-            <canvas id="thermal-canvas" width="80" height="62"
-              style="width:100%;height:100%;image-rendering:pixelated;display:block;"></canvas>
-            <!-- 핫스팟 오버레이 -->
-            <div id="thermal-hotspot"
-              style="position:absolute;bottom:10px;right:10px;background:rgba(0,0,0,0.65);
-                     backdrop-filter:blur(4px);color:#fff;font-size:11px;font-family:monospace;
-                     padding:4px 10px;border-radius:5px;">
-              📍 --,-- : --°C
-            </div>
-            <!-- 연결 상태 -->
-            <div id="th-conn-chip"
-              style="position:absolute;top:10px;left:10px;background:rgba(0,0,0,0.6);
-                     backdrop-filter:blur(4px);color:#94A3B8;font-size:11px;
-                     padding:3px 8px;border-radius:4px;">
-              대기 중...
-            </div>
-          </div>
-          <!-- 컬러 스케일 범례 -->
-          <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--gray500);">
-            <span>차가움</span>
-            <div style="flex:1;height:10px;border-radius:5px;
-              background:linear-gradient(to right,#00BFFF,#00FF80,#FFFF00,#FF4000);"></div>
-            <span>뜨거움</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- 오른쪽: 상세 정보 + 발열 이력 -->
-      <div style="display:flex;flex-direction:column;gap:12px;">
-
-        <!-- 핫스팟 상세 -->
-        <div style="background:#fff;border:1px solid var(--gray200);border-radius:10px;padding:16px;">
-          <div class="side-section-title" style="margin-bottom:12px;">📍 최고 발열 위치</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-            <div style="background:var(--gray50);border:1px solid var(--gray200);border-radius:8px;padding:12px;text-align:center;">
-              <div style="font-size:11px;color:var(--gray500);margin-bottom:4px;">행 (Row)</div>
-              <div style="font-size:22px;font-weight:700;color:var(--red);" id="th-hot-row">--</div>
-            </div>
-            <div style="background:var(--gray50);border:1px solid var(--gray200);border-radius:8px;padding:12px;text-align:center;">
-              <div style="font-size:11px;color:var(--gray500);margin-bottom:4px;">열 (Col)</div>
-              <div style="font-size:22px;font-weight:700;color:var(--red);" id="th-hot-col">--</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 환경 센서 -->
-        <div style="background:#fff;border:1px solid var(--gray200);border-radius:10px;padding:16px;">
-          <div class="side-section-title" style="margin-bottom:12px;">🌿 환경 센서 (ESP32)</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
-            <div style="background:var(--gray50);border:1px solid var(--gray200);border-radius:8px;padding:10px;text-align:center;">
-              <div style="font-size:10px;color:var(--gray500);margin-bottom:3px;">온도</div>
-              <div style="font-size:18px;font-weight:700;color:var(--temp);" id="th-env-temp">--.-</div>
-              <div style="font-size:10px;color:var(--gray400);">°C</div>
-            </div>
-            <div style="background:var(--gray50);border:1px solid var(--gray200);border-radius:8px;padding:10px;text-align:center;">
-              <div style="font-size:10px;color:var(--gray500);margin-bottom:3px;">습도</div>
-              <div style="font-size:18px;font-weight:700;color:var(--humid);" id="th-env-humid">--.-</div>
-              <div style="font-size:10px;color:var(--gray400);">%RH</div>
-            </div>
-            <div style="background:var(--gray50);border:1px solid var(--gray200);border-radius:8px;padding:10px;text-align:center;">
-              <div style="font-size:10px;color:var(--gray500);margin-bottom:3px;">가스</div>
-              <div style="font-size:18px;font-weight:700;color:var(--gas);" id="th-env-gas">---</div>
-              <div style="font-size:10px;color:var(--gray400);">ppm</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 연결 정보 -->
-        <div style="background:#fff;border:1px solid var(--gray200);border-radius:10px;padding:16px;">
-          <div class="side-section-title" style="margin-bottom:12px;">📡 모듈 정보</div>
-          <div style="font-size:12px;display:flex;flex-direction:column;gap:8px;color:var(--gray600);">
-            <div style="display:flex;justify-content:space-between;">
-              <span>모듈</span><span style="color:var(--text);font-weight:500;">Waveshare ESP32-S3</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;">
-              <span>해상도</span><span style="color:var(--text);font-weight:500;">80 × 62 px</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;">
-              <span>통신</span><span style="color:var(--text);font-weight:500;">Wi-Fi TCP :3333</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;">
-              <span>FOV</span><span style="color:var(--text);font-weight:500;">45°</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;">
-              <span>갱신 주기</span><span style="color:var(--text);font-weight:500;">2초</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;">
-              <span>연결 상태</span>
-              <span id="th-conn-text" style="color:var(--gray400);font-weight:500;">대기 중</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- 발열 이상 이력 -->
-        <div style="background:#fff;border:1px solid var(--gray200);border-radius:10px;overflow:hidden;flex:1;display:flex;flex-direction:column;">
-          <div class="panel-head">
-            <div class="panel-title" style="font-size:12px;">🔥 발열 이상 이력</div>
-            <span style="font-size:11px;color:var(--gray400);">최근 20건</span>
-          </div>
-          <div style="flex:1;overflow-y:auto;" id="th-alert-list">
-            <div style="padding:16px;text-align:center;font-size:11px;color:var(--gray400);">이상 없음</div>
-          </div>
-        </div>
-
-      </div>
-    </div>
-  </div>
-  <!-- 센서 이력 페이지 -->
-  <div class="page-view" id="page-history">
-    <div class="page-header">
-      <div class="page-header-title">📊 센서 이력</div>
-      <div class="page-header-sub">수집된 센서 데이터 이력을 확인합니다.</div>
-    </div>
-    <div class="table-wrap">
-      <table class="data-table">
-        <thead><tr><th>시간</th><th>온도 (°C)</th><th>습도 (%RH)</th><th>가스 농도 (ppm)</th><th>상태</th></tr></thead>
-        <tbody id="history-tbody"><tr><td colspan="5" style="text-align:center;color:var(--gray400);padding:24px;">수집된 데이터가 없습니다.</td></tr></tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- 이상 감지 로그 페이지 -->
-  <div class="page-view" id="page-alerts">
-    <div class="page-header">
-      <div class="page-header-title">🚨 이상 감지 로그</div>
-      <div class="page-header-sub">센서 · AI 탐지 · 열화상 이상 이벤트 기록입니다.</div>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;flex:1;overflow:hidden;">
-
-      <!-- 센서 이상 로그 -->
-      <div class="alert-log-wrap" style="min-height:400px;">
-        <div class="panel-head">
-          <div class="panel-title" style="color:var(--temp);">🌡 센서 이상</div>
-        </div>
-        <div class="alert-log-cols" style="grid-template-columns:1fr;">
-          <div class="alert-log-col" style="border-right:none;">
-            <div class="alert-col-body" id="log-sensor" style="max-height:400px;overflow-y:auto;">
-              <div class="alert-col-empty">이상 없음</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- AI 탐지 로그 -->
-      <div class="alert-log-wrap" style="min-height:400px;">
-        <div class="panel-head">
-          <div class="panel-title" style="color:var(--gas);">🤖 AI 탐지</div>
-        </div>
-        <div class="alert-log-cols" style="grid-template-columns:1fr;">
-          <div class="alert-log-col" style="border-right:none;">
-            <div class="alert-col-body" id="log-ai" style="max-height:400px;overflow-y:auto;">
-              <div class="alert-col-empty">이상 없음</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 열화상 로그 -->
-      <div class="alert-log-wrap" style="min-height:400px;">
-        <div class="panel-head">
-          <div class="panel-title" style="color:var(--red);">🔥 열화상</div>
-        </div>
-        <div class="alert-log-cols" style="grid-template-columns:1fr;">
-          <div class="alert-log-col" style="border-right:none;">
-            <div class="alert-col-body" id="log-thermal" style="max-height:400px;overflow-y:auto;">
-              <div class="alert-col-empty">이상 없음</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-    </div>
-  </div>
-
-  <!-- 시스템 설정 페이지 -->
-  <div class="page-view" id="page-settings">
-    <div class="page-header">
-      <div class="page-header-title">⚙️ 시스템 설정</div>
-      <div class="page-header-sub">이상 감지 임계값 및 시스템 설정을 변경합니다.</div>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-      <div class="setting-card">
-        <div class="setting-title">🌡 온도 임계값</div>
-        <div class="setting-row">
-          <div><div class="setting-label">주의 기준</div><div class="setting-sub">이 온도 초과 시 주의 알림</div></div>
-          <div style="display:flex;align-items:center;gap:4px;"><input class="setting-input" type="number" id="set-temp-warn" value="32">°C</div>
-        </div>
-        <div class="setting-row">
-          <div><div class="setting-label">위험 기준</div><div class="setting-sub">이 온도 초과 시 위험 알림</div></div>
-          <div style="display:flex;align-items:center;gap:4px;"><input class="setting-input" type="number" id="set-temp-danger" value="40">°C</div>
-        </div>
-      </div>
-      <div class="setting-card">
-        <div class="setting-title">💧 습도 임계값</div>
-        <div class="setting-row">
-          <div><div class="setting-label">고습도 위험 기준</div><div class="setting-sub">이 습도 초과 시 위험 알림</div></div>
-          <div style="display:flex;align-items:center;gap:4px;"><input class="setting-input" type="number" id="set-humid-high" value="85">%</div>
-        </div>
-        <div class="setting-row">
-          <div><div class="setting-label">저습도 주의 기준</div><div class="setting-sub">이 습도 미만 시 주의 알림</div></div>
-          <div style="display:flex;align-items:center;gap:4px;"><input class="setting-input" type="number" id="set-humid-low" value="20">%</div>
-        </div>
-      </div>
-      <div class="setting-card">
-        <div class="setting-title">☁ 가스 농도 임계값</div>
-        <div class="setting-row">
-          <div><div class="setting-label">주의 기준</div><div class="setting-sub">이 농도 초과 시 주의 알림</div></div>
-          <div style="display:flex;align-items:center;gap:4px;"><input class="setting-input" type="number" id="set-gas-warn" value="300">ppm</div>
-        </div>
-        <div class="setting-row">
-          <div><div class="setting-label">위험 기준</div><div class="setting-sub">이 농도 초과 시 위험 알림</div></div>
-          <div style="display:flex;align-items:center;gap:4px;"><input class="setting-input" type="number" id="set-gas-danger" value="500">ppm</div>
-        </div>
-      </div>
-      <div class="setting-card">
-        <div class="setting-title">🤖 AI 탐지 설정</div>
-        <div class="setting-row">
-          <div><div class="setting-label">장시간 정지 기준</div><div class="setting-sub">이 시간 이상 정지 시 감지</div></div>
-          <div style="display:flex;align-items:center;gap:4px;"><input class="setting-input" type="number" value="5">초</div>
-        </div>
-        <div class="setting-row">
-          <div><div class="setting-label">위험 오버레이 표시</div><div class="setting-sub">이상 감지 시 전체 화면 알림</div></div>
-          <input type="checkbox" id="set-overlay" checked style="width:18px;height:18px;cursor:pointer;">
-        </div>
-      </div>
-    </div>
-    <div style="display:flex;justify-content:flex-end;margin-top:4px;">
-      <button onclick="saveSettings()" style="background:var(--blue2);color:#fff;border:none;border-radius:8px;padding:10px 28px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;">설정 저장</button>
-    </div>
-  </div>
-
-  <!-- 사이드 패널 -->
-  <div class="side-panel" id="side-panel">
-    <div class="side-head">
-      <div class="side-title" id="side-title">온도 상세</div>
-      <button class="side-close" onclick="closeSide()">✕</button>
-    </div>
-    <div class="side-body">
-      <div class="stat-grid3">
-        <div class="stat3 mn"><div class="stat3-label">최솟값</div><div class="stat3-val" id="stat-min">--</div></div>
-        <div class="stat3 av"><div class="stat3-label">평균</div><div class="stat3-val" id="stat-avg">--</div></div>
-        <div class="stat3 mx"><div class="stat3-label">최댓값</div><div class="stat3-val" id="stat-max">--</div></div>
-      </div>
+  <!-- 사이드바 -->
+  <nav class="nav" aria-label="주 메뉴">
+    <div class="nav-logo">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>
       <div>
-        <div class="side-section-title">실시간 추이</div>
-        <canvas id="side-chart" height="140"></canvas>
-      </div>
-      <div>
-        <div class="side-section-title">이상 감지 이력</div>
-        <div id="alert-list"><div style="font-size:12px;color:var(--gray400);padding:8px 0;">이상 감지 이력 없음</div></div>
+        <div class="nav-logo-text">SafetyMonitor</div>
+        <div class="nav-logo-sub">밀폐공간 통합 관제</div>
       </div>
     </div>
-  </div>
+    <div class="nav-list">
+      <a class="nav-item" href="#monitor" data-page="monitor"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>실시간 관제</a>
+      <a class="nav-item" href="#camera" data-page="camera"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M23 7l-7 5 7 5z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>카메라 관제</a>
+      <a class="nav-item" href="#sensors" data-page="sensors"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg>센서 분석</a>
+      <a class="nav-item" href="#thermal" data-page="thermal"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 14.76V4a2 2 0 0 0-4 0v10.76a4 4 0 1 0 4 0z"/></svg>열화상</a>
+      <a class="nav-item" href="#logs" data-page="logs"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>이상 감지 로그<span class="nav-badge" id="nav-open-count" hidden>0</span></a>
+      <a class="nav-item" href="#settings" data-page="settings"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg>시스템 설정</a>
+    </div>
+    <div class="dev-box">
+      <div class="dev-title">장치 연결</div>
+      <div class="dev-row"><span class="dot" id="dev-server"></span>관제 서버<span class="dev-val" id="dev-server-val">연결 중</span></div>
+      <div class="dev-row"><span class="dot" id="dev-cam"></span>AI 카메라<span class="dev-val" id="dev-cam-val">확인 중</span></div>
+      <div class="dev-row"><span class="dot" id="dev-sensor"></span>ESP32 환경 센서<span class="dev-val" id="dev-sensor-val">대기 중</span></div>
+      <div class="dev-row"><span class="dot" id="dev-thermal"></span>열화상 카메라<span class="dev-val" id="dev-thermal-val">대기 중</span></div>
+      <button type="button" class="btn" onclick="logout()">로그아웃</button>
+    </div>
+  </nav>
+
+  {% for name in ["monitor", "camera", "sensors", "thermal", "logs", "settings"] %}
+  {% include "pages/" ~ name ~ ".html" %}
+  {% endfor %}
 
 </div>
 
-<script src="/static/js/dashboard.js"></script>
+<!-- 위험 배너: 처리 안 된 위험 이벤트가 있으면 표시 -->
+<div class="danger-bar" id="danger-bar" role="alert" hidden>
+  <a href="#logs" id="danger-bar-link">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+    <span id="danger-bar-text">위험 이벤트</span>
+    <span class="go">대응 페이지로 이동 →</span>
+  </a>
+  <span class="sep" aria-hidden="true"></span>
+  <button type="button" aria-label="알림 닫기" onclick="dismissDangerBar()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+</div>
+
+{% for name in ["common", "monitor", "camera", "sensors", "thermal", "logs", "settings"] %}
+<script src="{{ asset_url('js/' ~ name ~ '.js') }}"></script>
+{% endfor %}
 </body>
 </html>

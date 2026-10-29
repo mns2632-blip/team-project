@@ -4,234 +4,27 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>로그인 — 밀폐공간 안전 관제 시스템</title>
-<link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<style>
-  *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
-  :root {
-    --blue:    #1757C2;
-    --blue2:   #2563EB;
-    --blue-lt: #EFF4FF;
-    --red:     #DC2626;
-    --green:   #16A34A;
-    --gray50:  #F8FAFC;
-    --gray100: #F1F5F9;
-    --gray200: #E2E8F0;
-    --gray400: #94A3B8;
-    --gray600: #475569;
-    --gray800: #1E293B;
-    --text:    #0F172A;
-  }
-  html, body {
-    width:100%; height:100%;
-    background:var(--gray50);
-    font-family:'Pretendard', 'Noto Sans KR', sans-serif;
-    display:flex; align-items:center; justify-content:center;
-  }
-
-  .page {
-    display:flex; width:100%; max-width:1100px;
-    height:600px; border-radius:16px; overflow:hidden;
-    box-shadow:0 20px 60px rgba(0,0,0,0.12);
-  }
-
-  /* 왼쪽 배너 */
-  .banner {
-    flex:1;
-    background:linear-gradient(145deg, #0F3FA6 0%, #1757C2 50%, #1D4ED8 100%);
-    display:flex; flex-direction:column;
-    justify-content:space-between; padding:48px;
-    position:relative; overflow:hidden;
-  }
-  .banner::before {
-    content:''; position:absolute; inset:0;
-    background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-  }
-  .banner-top { position:relative; }
-  .banner-logo {
-    display:flex; align-items:center; gap:12px;
-    margin-bottom:48px;
-  }
-  .logo-box {
-    width:44px; height:44px; background:rgba(255,255,255,0.15);
-    border-radius:10px; display:flex; align-items:center; justify-content:center;
-    font-size:22px;
-  }
-  .logo-name { font-size:15px; font-weight:700; color:#fff; letter-spacing:-0.3px; }
-  .logo-sub  { font-size:11px; color:rgba(255,255,255,0.6); margin-top:1px; }
-
-  .banner-headline {
-    font-size:32px; font-weight:700; color:#fff;
-    line-height:1.35; letter-spacing:-0.5px;
-    margin-bottom:16px;
-  }
-  .banner-desc { font-size:14px; color:rgba(255,255,255,0.7); line-height:1.7; }
-
-  .banner-stats {
-    display:grid; grid-template-columns:1fr 1fr;
-    gap:12px; position:relative;
-  }
-  .stat-item {
-    background:rgba(255,255,255,0.1); border-radius:10px;
-    padding:14px 16px;
-  }
-  .stat-num  { font-size:22px; font-weight:700; color:#fff; letter-spacing:-0.5px; }
-  .stat-desc { font-size:11px; color:rgba(255,255,255,0.6); margin-top:2px; }
-
-  /* 오른쪽 로그인 */
-  .login-panel {
-    width:420px; background:#fff;
-    display:flex; flex-direction:column;
-    justify-content:center; padding:52px 48px;
-  }
-  .login-eyebrow {
-    display:inline-flex; align-items:center; gap:6px;
-    background:var(--blue-lt); color:var(--blue);
-    font-size:12px; font-weight:600; padding:5px 10px;
-    border-radius:6px; margin-bottom:20px;
-  }
-  .login-title { font-size:26px; font-weight:700; color:var(--text); letter-spacing:-0.5px; margin-bottom:6px; }
-  .login-sub   { font-size:14px; color:var(--gray600); margin-bottom:36px; }
-
-  .form-group { margin-bottom:18px; }
-  .form-label { display:block; font-size:13px; font-weight:600; color:var(--gray800); margin-bottom:7px; }
-  .form-input {
-    width:100%; padding:11px 14px;
-    border:1.5px solid var(--gray200); border-radius:8px;
-    font-size:14px; font-family:inherit; color:var(--text);
-    background:#fff; outline:none;
-    transition:border-color .15s, box-shadow .15s;
-  }
-  .form-input:focus {
-    border-color:var(--blue2);
-    box-shadow:0 0 0 3px rgba(37,99,235,0.1);
-  }
-  .form-input::placeholder { color:var(--gray400); }
-
-  .login-btn {
-    width:100%; padding:13px;
-    background:var(--blue2); color:#fff;
-    border:none; border-radius:8px;
-    font-size:15px; font-weight:600; font-family:inherit;
-    cursor:pointer; transition:background .15s, transform .1s;
-    margin-top:6px;
-  }
-  .login-btn:hover  { background:#1D4ED8; }
-  .login-btn:active { transform:scale(0.99); }
-
-  .error-msg {
-    font-size:13px; color:var(--red);
-    min-height:20px; margin-top:10px; text-align:center;
-  }
-
-  .divider {
-    display:flex; align-items:center; gap:12px;
-    margin:24px 0 16px; color:var(--gray400); font-size:12px;
-  }
-  .divider::before, .divider::after {
-    content:''; flex:1; height:1px; background:var(--gray200);
-  }
-
-  .sys-info {
-    background:var(--gray50); border:1px solid var(--gray200);
-    border-radius:8px; padding:12px 14px;
-    display:flex; align-items:center; gap:8px;
-  }
-  .sys-dot { width:8px; height:8px; border-radius:50%; background:var(--green); flex-shrink:0; }
-  .sys-text { font-size:12px; color:var(--gray600); }
-
-  .login-footer { margin-top:28px; font-size:12px; color:var(--gray400); text-align:center; }
-</style>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ asset_url('css/login.css') }}">
 </head>
 <body>
-
-<div class="page">
-  <!-- 왼쪽 배너 -->
-  <div class="banner">
-    <div class="banner-top">
-      <div class="banner-logo">
-        <div class="logo-box">🛡</div>
-        <div>
-          <div class="logo-name">SafetyMonitor</div>
-          <div class="logo-sub">Confined Space IoT System</div>
-        </div>
-      </div>
-      <div class="banner-headline">밀폐공간<br>통합 안전 관제 시스템</div>
-      <div class="banner-desc">IoT 센서와 AI 카메라를 활용하여<br>밀폐공간의 환경 이상과 작업자 이상행동을<br>실시간으로 감지하고 관제합니다.</div>
-    </div>
-    <div class="banner-stats">
-      <div class="stat-item">
-        <div class="stat-num">3종</div>
-        <div class="stat-desc">환경 센서 (온도·습도·가스)</div>
-      </div>
-      <div class="stat-item">
-        <div class="stat-num">AI</div>
-        <div class="stat-desc">YOLOv8 + MediaPipe</div>
-      </div>
-      <div class="stat-item">
-        <div class="stat-num">실시간</div>
-        <div class="stat-desc">2초 주기 데이터 수신</div>
-      </div>
-      <div class="stat-item">
-        <div class="stat-num">웹</div>
-        <div class="stat-desc">어디서나 대시보드 접근</div>
-      </div>
-    </div>
+<form class="card" id="login-form" novalidate>
+  <div class="brand">
+    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>
+    <div><h1>SafetyMonitor</h1><div class="brand-sub">밀폐공간 통합 안전 관제</div></div>
   </div>
-
-  <!-- 오른쪽 로그인 -->
-  <div class="login-panel">
-    <div class="login-eyebrow">🔒 관리자 전용</div>
-    <div class="login-title">로그인</div>
-    <div class="login-sub">관리자 계정으로 시스템에 접속하세요.</div>
-
-    <div class="form-group">
-      <label class="form-label">아이디</label>
-      <input class="form-input" type="text" id="username" placeholder="아이디 입력" autocomplete="off">
-    </div>
-    <div class="form-group">
-      <label class="form-label">비밀번호</label>
-      <input class="form-input" type="password" id="password" placeholder="비밀번호 입력">
-    </div>
-
-    <button class="login-btn" onclick="doLogin()">로그인</button>
-    <div class="error-msg" id="error-msg"></div>
-
-    <div class="divider">시스템 상태</div>
-    <div class="sys-info">
-      <div class="sys-dot"></div>
-      <div class="sys-text">모든 센서 정상 작동 중 — Jetson Nano 연결됨</div>
-    </div>
-
-    <div class="login-footer">CAPSTONE DESIGN 2026 · IRIS 팀</div>
+  <div class="field">
+    <label for="username">아이디</label>
+    <input type="text" id="username" autocomplete="username" placeholder="관리자 아이디">
   </div>
-</div>
-
-<script>
-  document.addEventListener("keydown", e => { if (e.key==="Enter") doLogin(); });
-  async function doLogin() {
-    const id  = document.getElementById("username").value.trim();
-    const pw  = document.getElementById("password").value;
-    const err = document.getElementById("error-msg");
-    if (!id || !pw) { err.textContent = "아이디와 비밀번호를 입력해주세요."; return; }
-
-    try {
-      const response = await fetch("/login", {
-        method: "POST",
-        headers: {"Content-Type": "application/x-www-form-urlencoded"},
-        body: new URLSearchParams({username: id, password: pw})
-      });
-      const result = await response.json();
-      if (response.ok && result.success) {
-        window.location.href = "/dashboard";
-      } else {
-        err.textContent = result.message;
-        document.getElementById("password").value = "";
-      }
-    } catch {
-      err.textContent = "서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.";
-      document.getElementById("password").value = "";
-    }
-  }
-</script>
+  <div class="field">
+    <label for="password">비밀번호</label>
+    <input type="password" id="password" autocomplete="current-password" placeholder="비밀번호">
+  </div>
+  <button type="submit" class="login-btn" id="login-btn">로그인</button>
+  <div class="error-msg" id="error-msg" role="alert"></div>
+  <div class="foot">CAPSTONE DESIGN 2026 · IRIS 팀</div>
+</form>
+<script src="{{ asset_url('js/login.js') }}"></script>
 </body>
 </html>

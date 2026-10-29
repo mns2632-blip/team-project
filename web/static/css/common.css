@@ -1,0 +1,123 @@
+/* 공통: 테마 토큰, 앱 셸, 카드, 배지, 위험 배너 */
+*, *::before, *::after { box-sizing:border-box; }
+:root {
+  --bg:#FFFFFF; --bg-muted:#FAFAFA; --subtle:#F4F4F5; --border:#E4E4E7; --border-strong:#D4D4D8;
+  --text:#09090B; --text2:#3F3F46; --text3:#52525B; --muted:#71717A; --primary:#18181B;
+  --ok:#16A34A; --ok-fg:#15803D; --ok-bg:#DCFCE7; --ok-soft:#F0FDF4; --ok-border:#BBF7D0;
+  --warn:#D97706; --warn-dot:#F59E0B; --warn-fg:#B45309; --warn-bg:#FEF3C7; --warn-band:#FDE68A;
+  --danger:#DC2626; --danger-fg:#B91C1C; --danger-bg:#FEE2E2; --danger-soft:#FEF2F2; --danger-border:#FCA5A5; --danger-band:#FECACA;
+  --temp:#2563EB; --humid:#0D9488; --gas:#EA580C;
+  --shadow:0 1px 2px rgba(0,0,0,.05);
+  --num:'Inter','Noto Sans KR',system-ui,sans-serif;
+}
+html, body { margin:0; height:100%; background:var(--bg); color:var(--text);
+  font-family:'Inter','Noto Sans KR',system-ui,sans-serif; }
+h1, h2 { letter-spacing:-0.025em; margin:0; }
+h1 { font-size:26px; font-weight:600; }
+h2 { font-size:15px; font-weight:600; }
+a { color:var(--text); text-underline-offset:4px; }
+a:hover { color:var(--text3); }
+button { font:inherit; }
+input:focus, select:focus, textarea:focus, button:focus-visible, a:focus-visible, [tabindex]:focus-visible {
+  outline:2px solid #A1A1AA; outline-offset:2px; }
+.num { font-family:var(--num); font-variant-numeric:tabular-nums; letter-spacing:-0.02em; }
+.muted { color:var(--muted); }
+[hidden] { display:none !important; }
+
+/* ── 앱 셸 ── */
+.app { display:flex; height:100vh; }
+.nav { flex:0 0 220px; padding:20px 14px; background:var(--bg-muted); border-right:1px solid var(--border);
+  display:flex; flex-direction:column; gap:4px; overflow-y:auto; }
+.nav-logo { display:flex; align-items:center; gap:10px; padding:4px 10px 22px; color:var(--primary); }
+.nav-logo-text { font-weight:700; font-size:16px; color:var(--text); }
+.nav-logo-sub { font-size:11px; color:var(--muted); }
+.nav-item { display:flex; align-items:center; gap:12px; min-height:36px; padding:0 10px; border-radius:6px;
+  color:var(--text3); text-decoration:none; font-size:14px; }
+.nav-item:hover { background:var(--subtle); color:var(--text); }
+.nav-item[aria-current="page"] { background:var(--subtle); color:var(--primary); font-weight:500; }
+.nav-badge { margin-left:auto; font-size:11px; font-weight:700; background:var(--warn-bg); color:var(--warn-fg);
+  padding:2px 8px; border-radius:8px; }
+.nav-badge.danger { background:var(--danger-bg); color:var(--danger-fg); }
+.dev-box { margin-top:auto; padding:14px 12px 0; border-top:1px solid var(--border);
+  display:flex; flex-direction:column; gap:10px; font-size:12px; color:var(--muted); }
+.dev-title { font-weight:600; color:var(--text2); }
+.dev-row { display:flex; align-items:center; gap:8px; }
+.dev-val { margin-left:auto; }
+.dot { width:8px; height:8px; border-radius:4px; background:#D4D4D8; flex:none; }
+.dot.ok { background:var(--ok); } .dot.warn { background:var(--warn-dot); } .dot.danger { background:var(--danger); }
+.dev-val.ok { color:var(--ok-fg); } .dev-val.warn { color:var(--warn-fg); } .dev-val.danger { color:var(--danger-fg); }
+
+.page { display:none; flex:1 1 0; min-width:0; overflow-y:auto; padding:24px 28px 32px;
+  flex-direction:column; gap:18px; }
+.page.active { display:flex; }
+.page-head { display:flex; flex-wrap:wrap; align-items:flex-end; gap:12px 20px; }
+.page-sub { font-size:13px; color:var(--muted); margin-top:4px; }
+.page-actions { margin-left:auto; display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+
+/* ── 카드 · 버튼 · 배지 ── */
+.card { background:var(--bg); border:1px solid var(--border); border-radius:12px; box-shadow:var(--shadow); min-width:0; }
+.card-pad { padding:16px 18px; display:flex; flex-direction:column; gap:12px; }
+.card-head { display:flex; align-items:center; gap:10px; padding:10px 16px; border-bottom:1px solid var(--subtle); }
+.card-head .link { margin-left:auto; }
+.row { display:flex; align-items:center; gap:8px; }
+.link { font-size:12px; font-weight:500; text-decoration:none; display:inline-flex; align-items:center; min-height:32px; }
+.btn { min-height:40px; padding:0 16px; border-radius:8px; border:1px solid var(--border); background:var(--bg);
+  color:var(--text); font-size:14px; font-weight:500; box-shadow:var(--shadow); cursor:pointer;
+  display:inline-flex; align-items:center; justify-content:center; gap:8px; text-decoration:none; }
+.btn:hover { background:var(--bg-muted); }
+.btn-primary { background:var(--primary); border-color:var(--primary); color:#FAFAFA; }
+.btn-primary:hover { background:#27272A; }
+.btn-danger { background:var(--danger); border-color:var(--danger); color:#FFFFFF; }
+.btn-danger:hover { background:var(--danger-fg); }
+.btn-sm { min-height:32px; padding:0 12px; font-size:12px; }
+.btn:disabled { opacity:.5; cursor:not-allowed; }
+.icon-btn { flex:none; width:36px; height:36px; border-radius:8px; border:1px solid var(--border); background:var(--bg);
+  color:var(--text2); display:flex; align-items:center; justify-content:center; cursor:pointer; }
+.badge { display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:600; padding:2px 8px;
+  border-radius:6px; background:var(--subtle); color:#27272A; white-space:nowrap; }
+.badge.ok { background:var(--ok-bg); color:var(--ok-fg); }
+.badge.warn { background:var(--warn-bg); color:var(--warn-fg); }
+.badge.danger { background:var(--danger-bg); color:var(--danger-fg); }
+.live { display:flex; align-items:center; gap:6px; font-size:12px; font-weight:700; color:var(--danger); }
+.live::before { content:''; width:8px; height:8px; border-radius:4px; background:var(--danger); }
+.seg { display:inline-flex; padding:3px; gap:2px; background:var(--subtle); border-radius:8px; }
+.seg button { min-height:32px; padding:0 12px; border:0; border-radius:6px; background:transparent; color:var(--text3);
+  font-size:13px; font-weight:500; cursor:pointer; }
+.seg button[aria-pressed="true"] { background:var(--bg); color:var(--text); box-shadow:0 1px 2px rgba(0,0,0,.08); }
+.empty { padding:20px 12px; text-align:center; font-size:13px; color:var(--muted); }
+.field { display:flex; flex-direction:column; gap:6px; }
+.field label { font-size:12px; color:var(--text3); }
+.input, select.input, textarea.input { min-height:40px; border-radius:8px; border:1px solid var(--border); background:var(--bg);
+  color:var(--text); padding:0 12px; font:inherit; font-size:14px; }
+textarea.input { padding:10px 12px; resize:vertical; }
+
+/* 스트림 영상 공통 */
+.stream { position:relative; background:var(--subtle); display:flex; align-items:center; justify-content:center; overflow:hidden; }
+.stream img { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; }
+.stream .offline { color:var(--muted); font-size:13px; }
+
+/* ── 위험 배너 (화면 하단) ── */
+body.alarm::after { content:''; position:fixed; inset:0; border:4px solid var(--danger); pointer-events:none; z-index:50; }
+.danger-bar { position:fixed; left:236px; right:20px; bottom:16px; z-index:60; display:flex; align-items:center; gap:4px;
+  padding-right:6px; border-radius:8px; background:var(--danger); box-shadow:0 6px 20px rgba(220,38,38,.3); }
+.danger-bar a { flex:1 1 auto; min-width:0; display:flex; align-items:center; gap:12px; min-height:52px; padding:0 8px 0 18px;
+  color:#FFFFFF; text-decoration:none; font-weight:700; font-size:15px; }
+.danger-bar a span:first-of-type { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.danger-bar .go { margin-left:auto; font-size:14px; flex:none; }
+.danger-bar .sep { width:1px; height:24px; background:rgba(255,255,255,.35); }
+.danger-bar button { flex:none; width:44px; height:44px; border:0; border-radius:8px; background:transparent; color:#FFFFFF;
+  cursor:pointer; display:flex; align-items:center; justify-content:center; }
+
+::-webkit-scrollbar { width:6px; height:6px; }
+::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
+
+@media (max-width: 860px) {
+  .app { flex-direction:column; height:auto; min-height:100vh; }
+  .nav { flex:none; flex-direction:row; flex-wrap:wrap; align-items:center; padding:10px 16px; overflow:visible; }
+  .nav-logo { padding:0 8px 0 0; }
+  .nav-logo-sub, .dev-box { display:none; }
+  .nav-list { display:flex; flex:1 1 100%; overflow-x:auto; gap:4px; }
+  .nav-item { white-space:nowrap; }
+  .page { padding:16px; overflow:visible; }
+  .danger-bar { left:16px; right:16px; }
+}

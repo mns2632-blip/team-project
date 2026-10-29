@@ -1,0 +1,28 @@
+<!-- 열화상 -->
+<main class="page" id="page-thermal">
+  <header class="page-head">
+    <div><h1>열화상</h1><div class="page-sub">Waveshare ESP32-S3 · 80×62 px · Wi-Fi TCP :3333 · 2초 주기</div></div>
+    <div class="page-actions"><span class="badge" id="th-status">대기 중</span></div>
+  </header>
+
+  <section class="th-cards">
+    <div class="card card-pad"><span class="muted" style="font-size:13px;">최고 온도</span><div><span class="num th-big" id="th-max">--.-</span><span class="muted"> °C</span></div><span class="muted" style="font-size:11px;" id="th-thr"></span></div>
+    <div class="card card-pad"><span class="muted" style="font-size:13px;">평균 온도</span><div><span class="num th-big" id="th-avg">--.-</span><span class="muted"> °C</span></div></div>
+    <div class="card card-pad"><span class="muted" style="font-size:13px;">최저 온도</span><div><span class="num th-big" id="th-min">--.-</span><span class="muted"> °C</span></div></div>
+  </section>
+
+  <section class="th-body">
+    <div class="card th-heat">
+      <div class="card-head"><h2>열화상 히트맵</h2><span class="muted" style="font-size:12px;" id="th-conn">대기 중</span><span class="live" style="margin-left:auto;">LIVE</span></div>
+      <div class="th-canvas-wrap">
+        <canvas id="thermal-canvas" width="80" height="62"></canvas>
+        <span class="th-hot num" id="th-hot">(--, --) : --°C</span>
+      </div>
+      <div class="th-scale"><span>차가움</span><div></div><span>뜨거움</span></div>
+    </div>
+    <div class="card card-pad">
+      <div class="row"><h2>발열 이벤트</h2><a class="link" href="#logs" style="margin-left:auto;">로그 보기 →</a></div>
+      <ul class="cam-events" id="th-events"></ul>
+    </div>
+  </section>
+</main>

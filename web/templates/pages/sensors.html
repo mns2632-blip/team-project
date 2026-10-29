@@ -1,0 +1,50 @@
+<!-- 센서 분석 -->
+<main class="page" id="page-sensors">
+  <header class="page-head">
+    <div><h1>센서 분석</h1><div class="page-sub">ESP32 환경 센서 · 언제, 무엇이 먼저 변했는지 찾습니다</div></div>
+    <div class="page-actions">
+      <div class="seg" role="group" aria-label="기간" id="sn-range">
+        <button type="button" data-min="10" aria-pressed="false">10분</button>
+        <button type="button" data-min="30" aria-pressed="false">30분</button>
+        <button type="button" data-min="60" aria-pressed="true">1시간</button>
+      </div>
+      <button type="button" class="btn" onclick="exportSensorCSV()">CSV 내보내기</button>
+    </div>
+  </header>
+
+  <section class="sn-cards" aria-label="구간 요약">
+    {% for key, label in [("temp", "온도"), ("humid", "습도"), ("gas", "가스 농도")] %}
+    <div class="card card-pad sn-card" id="sn-{{ key }}">
+      <div class="row"><span class="sn-swatch" style="background:var(--{{ key }});"></span><span style="font-size:14px;font-weight:600;">{{ label }}</span><span class="badge ok sn-state" style="margin-left:auto;">대기</span></div>
+      <div class="row" style="align-items:baseline;gap:6px;"><span class="num sn-max">--</span><span class="muted sn-unit" style="font-size:12px;"></span><span class="muted" style="font-size:12px;">최고</span></div>
+      <dl class="kv"><dt>평균</dt><dd class="num sn-avg">--</dd><dt>최저</dt><dd class="num sn-min">--</dd><dt>기준 초과</dt><dd class="num sn-over">--</dd></dl>
+    </div>
+    {% endfor %}
+  </section>
+
+  <section class="card card-pad">
+    <div class="row" style="flex-wrap:wrap;gap:12px;">
+      <div><h2>센서 통합 추이</h2><p class="muted" style="margin:4px 0 0;font-size:13px;">각 센서 값을 <strong>위험 기준 = 100%</strong>로 맞춰 한 축에 겹쳤습니다</p></div>
+      <div class="row" style="margin-left:auto;gap:6px;" id="sn-legend">
+        <button type="button" class="sn-leg" data-key="temp" aria-pressed="true"><span style="background:var(--temp);"></span>온도</button>
+        <button type="button" class="sn-leg" data-key="humid" aria-pressed="true"><span style="background:var(--humid);"></span>습도</button>
+        <button type="button" class="sn-leg" data-key="gas" aria-pressed="true"><span style="background:var(--gas);"></span>가스 농도</button>
+      </div>
+    </div>
+    <div class="sn-chart"><canvas id="sn-chart" aria-label="센서 통합 추이 그래프" role="img"></canvas></div>
+    <div class="muted" style="font-size:12px;" id="sn-span">이 브라우저에서 대시보드를 연 뒤 수집한 값만 분석합니다</div>
+  </section>
+
+  <section class="sn-bottom">
+    <div class="card card-pad">
+      <h2>센서 간 상관</h2>
+      <p class="muted" style="margin:0;font-size:13px;">선택 구간에서 함께 움직인 정도 (−1 ~ 1)</p>
+      <div class="sn-corr" id="sn-corr"></div>
+      <p style="margin:0;font-size:13px;" id="sn-corr-note"></p>
+    </div>
+    <div class="card card-pad">
+      <div class="row"><h2>구간 내 이상 이벤트</h2><a class="link" href="#logs" style="margin-left:auto;">로그 보기 →</a></div>
+      <ul class="cam-events" id="sn-events"></ul>
+    </div>
+  </section>
+</main>

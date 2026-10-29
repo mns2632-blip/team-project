@@ -1,0 +1,83 @@
+<!-- 실시간 관제 -->
+<main class="page monitor" id="page-monitor">
+
+  <header class="mon-head">
+    <div class="mon-status ok" id="mon-status" role="status" aria-live="polite">
+      <span class="mon-status-icon" aria-hidden="true">
+        <svg class="i-ok" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg>
+        <svg class="i-bad" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 7v6M12 17h.01"/></svg>
+      </span>
+      <div class="mon-status-text">
+        <div class="row" style="align-items:baseline;gap:10px;">
+          <span class="mon-status-title" id="mon-status-title">정상</span>
+          <span class="mon-site" id="mon-site"></span>
+        </div>
+        <span class="mon-status-reason" id="mon-status-reason">모든 센서와 작업자 상태가 안전 범위입니다</span>
+      </div>
+      <ol class="mon-steps" aria-label="위험 단계">
+        <li data-level="ok">정상</li><li data-level="warn">주의</li><li data-level="danger">위험</li>
+      </ol>
+    </div>
+    <div class="card mon-clock">
+      <div class="num" id="mon-clock">--:--:--</div>
+      <div class="muted" id="mon-elapsed">관제 경과 0분</div>
+    </div>
+  </header>
+
+  <section class="gauges" aria-label="환경 센서">
+    {% for key, label in [("temp", "온도"), ("humid", "습도"), ("gas", "가스 농도")] %}
+    <a class="card gauge" href="#sensors" id="g-{{ key }}">
+      <div class="row"><span class="gauge-label">{{ label }}</span><span class="badge ok gauge-state" style="margin-left:auto;">대기</span></div>
+      <div class="gauge-dial">
+        <svg width="128" height="72" viewBox="0 0 128 72" aria-hidden="true">
+          <path d="M 12 64 A 52 52 0 0 1 116 64" fill="none" stroke="#F4F4F5" stroke-width="10" stroke-linecap="round"/>
+          <path class="arc-warn" d="M 12 64 A 52 52 0 0 1 116 64" fill="none" stroke="#FDE68A" stroke-width="10"/>
+          <path class="arc-danger" d="M 12 64 A 52 52 0 0 1 116 64" fill="none" stroke="#FECACA" stroke-width="10"/>
+          <path class="arc-val" d="M 12 64 A 52 52 0 0 1 116 64" fill="none" stroke-width="10" stroke-linecap="round" stroke-dasharray="0 164"/>
+        </svg>
+        <div class="gauge-value"><span class="num gauge-num">--</span><span class="muted gauge-unit"></span></div>
+      </div>
+      <svg class="gauge-spark" viewBox="0 0 120 24" preserveAspectRatio="none" role="img" aria-label="{{ label }} 최근 10분 추이"><polyline fill="none" stroke-width="1.6" points=""/></svg>
+      <div class="gauge-foot"><span class="gauge-thr"></span><span class="gauge-trend"></span></div>
+    </a>
+    {% endfor %}
+  </section>
+
+  <section class="mon-body">
+    <div class="card mon-video">
+      <div class="card-head">
+        <h2>AI 탐지 영상</h2><span class="live">LIVE</span>
+        <a class="link" href="#camera" style="margin-left:auto;">카메라 관제 →</a>
+        <button type="button" class="icon-btn" aria-label="영상 전체 보기" title="영상 전체 보기" onclick="openFullscreen()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+      </div>
+      <div class="stream mon-stream">
+        <span class="offline">카메라 연결 대기 중</span>
+        <img data-stream alt="AI 탐지 영상" onload="this.previousElementSibling.hidden=true" onerror="this.previousElementSibling.hidden=false">
+      </div>
+    </div>
+
+    <div class="mon-side">
+      <div class="card card-pad worker" id="worker">
+        <div class="row" style="gap:12px;">
+          <span class="worker-icon" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="5" r="2.5"/><path d="M12 8v7M8 11h8M10 22l2-7 2 7"/></svg></span>
+          <div style="min-width:0;"><div class="muted" style="font-size:13px;">작업자 AI 판정</div><div class="worker-state" id="worker-state">감지 대기 중</div></div>
+        </div>
+        <dl class="worker-crit">
+          <dt>쓰러짐</dt><dd>척추 기울기 <b class="num" id="crit-spine">45°</b> 초과</dd>
+          <dt>장시간 정지</dt><dd>움직임 없음 <b class="num" id="crit-still">5초</b> 이상</dd>
+          <dt>추론</dt><dd class="num" id="worker-fps">--</dd>
+        </dl>
+      </div>
+
+      <div class="card todo">
+        <div class="card-head"><h2>처리 필요</h2><span class="badge num" id="todo-count">0</span><a class="link" href="#logs">전체 로그 →</a></div>
+        <ul class="todo-list" id="todo-list"></ul>
+        <div class="todo-empty" id="todo-empty">
+          <span class="todo-ok" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg></span>
+          <span style="font-size:14px;font-weight:600;">처리할 이벤트가 없습니다</span>
+          <span class="muted" style="font-size:12px;" id="todo-last"></span>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>

@@ -1,0 +1,33 @@
+/* 카메라 관제 화면 */
+.cam-card { overflow:hidden; display:flex; flex-direction:column; }
+/* 영상 원본 비율(4:3)대로 높이를 정해 폭을 꽉 채우고 잘리지 않게 함 */
+.cam-stage { min-height:240px; }
+.cam-stage img { position:static; display:block; width:100%; height:auto; }
+.cam-stage .offline { position:absolute; }
+.cam-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:16px; align-items:start; }
+.cam-det { font-size:20px; font-weight:700; color:var(--text3); }
+.cam-det.ok { color:var(--ok-fg); } .cam-det.warn { color:var(--warn-fg); } .cam-det.danger { color:var(--danger-fg); }
+.kv { margin:0; display:grid; grid-template-columns:auto 1fr; gap:8px 14px; font-size:13px; }
+.kv dt { color:var(--muted); }
+.kv dd { margin:0; }
+.kv dd.ok { color:var(--ok-fg); font-weight:600; } .kv dd.danger { color:var(--danger-fg); font-weight:600; }
+.cam-events { list-style:none; margin:0; padding:0; }
+.cam-events li { display:flex; align-items:center; gap:8px; padding:9px 0; border-top:1px solid var(--subtle); font-size:13px; }
+.cam-events .num { color:var(--muted); font-size:12px; }
+
+/* 전체 화면 보기: 평소에는 숨기고 전체 화면일 때만 표시 */
+.fs-top, .fs-bottom, .fs-status { display:none; }
+.cam-stage:fullscreen { background:#09090B; }
+.cam-stage:fullscreen img { position:absolute; inset:0; height:100%; object-fit:contain; }
+.cam-stage:fullscreen .offline { color:#A1A1AA; }
+.cam-stage:fullscreen .fs-top { display:flex; position:absolute; left:0; right:0; top:0; padding:16px 20px; align-items:center; gap:12px;
+  background:linear-gradient(rgba(0,0,0,.55), transparent); color:#FFFFFF; }
+.cam-stage:fullscreen .fs-status { display:block; position:absolute; left:20px; bottom:96px; font-size:13px; font-weight:700; color:#FFFFFF;
+  background:rgba(0,0,0,.5); padding:6px 10px; border-radius:8px; }
+.cam-stage:fullscreen .fs-bottom { display:flex; position:absolute; left:50%; bottom:20px; transform:translateX(-50%); gap:8px;
+  padding:8px; border-radius:8px; background:rgba(24,24,27,.85); }
+.fs-title { font-size:15px; font-weight:700; }
+.fs-clock { margin-left:auto; font-size:18px; font-weight:700; }
+.fs-btn { min-width:44px; height:44px; padding:0 12px; border-radius:8px; border:0; background:rgba(255,255,255,.12); color:#FFFFFF;
+  font-size:13px; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:6px; }
+.fs-btn:hover { background:rgba(255,255,255,.2); }

@@ -1,0 +1,38 @@
+/* 로그인 화면 */
+*, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+:root {
+  --bg:#FFFFFF; --panel:#FFFFFF; --border:#E4E4E7; --field:#E4E4E7;
+  --text:#09090B; --muted:#71717A; --label:#3F3F46;
+  --primary:#18181B; --red:#B91C1C;
+}
+html, body {
+  min-height:100%; background:var(--bg); color:var(--text);
+  font-family:'Inter','Noto Sans KR',system-ui,sans-serif;
+}
+body { display:flex; align-items:center; justify-content:center; min-height:100vh; padding:24px 16px; }
+.card {
+  width:100%; max-width:400px; background:var(--panel);
+  border:1px solid var(--border); border-radius:8px; padding:36px 32px;
+  display:flex; flex-direction:column; gap:18px;
+}
+.brand { display:flex; align-items:center; gap:12px; margin-bottom:8px; color:var(--primary); }
+.brand h1 { margin:0; font-size:20px; font-weight:700; color:var(--text); letter-spacing:-0.025em; }
+.brand-sub { font-size:13px; color:var(--muted); }
+.field { display:flex; flex-direction:column; gap:6px; }
+.field label { font-size:13px; color:var(--label); }
+.field input {
+  min-height:40px; border-radius:8px; border:1px solid var(--field);
+  background:var(--bg); color:var(--text); padding:0 12px;
+  font:inherit; font-size:15px; outline:none;
+}
+.field input:focus { outline:2px solid #A1A1AA; outline-offset:2px; }
+.field input::placeholder { color:#A1A1AA; }
+.login-btn {
+  min-height:40px; border:0; border-radius:8px; margin-top:4px;
+  background:var(--primary); color:#FAFAFA; font:inherit; font-weight:500; font-size:14px; cursor:pointer;
+}
+.login-btn:hover { background:#27272A; }
+.login-btn:disabled { opacity:.6; cursor:wait; }
+.login-btn:focus-visible { outline:2px solid #A1A1AA; outline-offset:2px; }
+.error-msg { font-size:13px; color:var(--red); min-height:20px; text-align:center; }
+.foot { border-top:1px solid var(--border); padding-top:16px; font-size:12px; color:var(--muted); text-align:center; }

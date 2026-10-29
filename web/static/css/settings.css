@@ -1,0 +1,25 @@
+/* 시스템 설정 화면 */
+.st-sections { display:flex; flex-direction:column; gap:28px; max-width:1100px; }
+.st-section { display:grid; grid-template-columns:minmax(200px, 1fr) minmax(0, 2.4fr); gap:20px; align-items:start; }
+.st-section p { margin:4px 0 0; font-size:13px; color:var(--muted); }
+.st-grid2 { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:14px; }
+.st-table-card { overflow-x:auto; }
+.st-table { width:100%; border-collapse:collapse; font-size:13px; }
+.st-table th { text-align:left; font-weight:500; color:var(--muted); padding:10px 16px; border-bottom:1px solid var(--border); }
+.st-table td { padding:8px 16px; border-bottom:1px solid var(--subtle); }
+.st-table .input { width:110px; min-height:36px; text-align:right; }
+.st-fixed td { color:var(--text3); }
+.st-err { margin:0; padding:0 16px 12px; font-size:13px; color:var(--danger-fg); }
+.st-err:empty { display:none; }
+.st-devices { list-style:none; margin:0; padding:0; }
+.st-devices li { display:flex; align-items:center; gap:12px; padding:14px 18px; border-bottom:1px solid var(--subtle); }
+.st-devices li .badge { margin-left:auto; }
+.st-dev-name { font-size:14px; font-weight:500; }
+.st-switch-row { display:flex; align-items:center; gap:16px; }
+.st-switch-row > :last-child { margin-left:auto; flex:none; }
+.switch { width:44px; height:24px; border-radius:12px; border:0; background:#D4D4D8; position:relative; cursor:pointer; padding:0; }
+.switch span { position:absolute; top:2px; left:2px; width:20px; height:20px; border-radius:10px; background:#FFFFFF;
+  box-shadow:0 1px 2px rgba(0,0,0,.2); transition:left .15s; }
+.switch[aria-checked="true"] { background:var(--primary); }
+.switch[aria-checked="true"] span { left:22px; }
+@media (max-width: 860px) { .st-section, .st-grid2 { grid-template-columns:1fr; } }

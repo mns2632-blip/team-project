@@ -1,0 +1,90 @@
+/* 실시간 관제 화면 */
+.page.monitor { padding:16px 20px; gap:12px; overflow:hidden; }
+.mon-head { flex:none; display:flex; align-items:stretch; gap:12px; }
+.mon-status { flex:1 1 auto; min-width:0; display:flex; align-items:center; gap:16px; padding:12px 18px; border-radius:12px;
+  background:var(--ok-soft); border:1px solid var(--ok-border); }
+.mon-status-icon { flex:none; width:48px; height:48px; border-radius:24px; background:var(--ok); color:#FFFFFF;
+  display:flex; align-items:center; justify-content:center; box-shadow:0 0 0 6px rgba(22,163,74,.15); }
+.mon-status .i-bad { display:none; }
+.mon-status:not(.ok) .i-ok { display:none; }
+.mon-status:not(.ok) .i-bad { display:block; }
+.mon-status-text { min-width:0; display:flex; flex-direction:column; gap:2px; }
+.mon-status-title { font-size:28px; font-weight:700; color:var(--ok-fg); }
+.mon-site { font-size:13px; color:var(--text3); }
+.mon-status-reason { font-size:14px; color:var(--text2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.mon-steps { list-style:none; margin:0 0 0 auto; padding:4px; display:flex; gap:4px; background:rgba(255,255,255,.7); border-radius:8px; }
+.mon-steps li { min-width:56px; padding:6px 10px; border-radius:6px; text-align:center; font-size:12px; font-weight:600; color:var(--muted); }
+.mon-status.ok .mon-steps [data-level="ok"] { background:var(--ok); color:#FFFFFF; }
+.mon-status.warn .mon-steps [data-level="warn"] { background:var(--warn); color:#FFFFFF; }
+.mon-status.danger .mon-steps [data-level="danger"] { background:var(--danger); color:#FFFFFF; }
+.mon-status.warn { background:#FFFBEB; border-color:var(--warn-band); }
+.mon-status.warn .mon-status-icon { background:var(--warn); box-shadow:0 0 0 6px rgba(217,119,6,.15); }
+.mon-status.warn .mon-status-title { color:var(--warn-fg); }
+.mon-status.danger { background:var(--danger-soft); border-color:var(--danger-border); }
+.mon-status.danger .mon-status-icon { background:var(--danger); box-shadow:0 0 0 6px rgba(220,38,38,.18); }
+.mon-status.danger .mon-status-title { color:var(--danger-fg); }
+.mon-status.danger .mon-status-reason { color:#7F1D1D; }
+.mon-clock { flex:none; padding:10px 16px; display:flex; flex-direction:column; justify-content:center; text-align:right; }
+.mon-clock .num { font-size:22px; font-weight:700; }
+.mon-clock .muted { font-size:12px; }
+
+.gauges { flex:none; display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:12px; }
+.gauge { text-decoration:none; color:inherit; padding:12px 14px 10px; display:flex; flex-direction:column; gap:4px; }
+.gauge:hover { color:inherit; border-color:var(--border-strong); }
+.gauge.warn { border-color:var(--warn-band); }
+.gauge.danger { border-color:var(--danger-border); }
+.gauge-label { font-size:13px; font-weight:500; }
+.gauge-dial { position:relative; height:72px; display:flex; justify-content:center; }
+.gauge-value { position:absolute; left:0; right:0; bottom:0; text-align:center; line-height:1; }
+.gauge-num { font-size:26px; font-weight:700; }
+.gauge.danger .gauge-num { color:var(--danger-fg); }
+.gauge-unit { font-size:12px; margin-left:3px; }
+.gauge-spark { width:100%; height:24px; }
+.gauge-foot { display:flex; font-size:11px; color:var(--muted); }
+.gauge-trend { margin-left:auto; font-weight:600; color:var(--text3); }
+.gauge.danger .gauge-trend { color:var(--danger-fg); }
+
+.mon-body { flex:1 1 0; min-height:0; display:grid; grid-template-columns:minmax(0, 2fr) minmax(320px, 1fr); gap:12px; }
+.mon-video { overflow:hidden; display:flex; flex-direction:column; min-height:0; }
+.mon-video .card-head { padding:8px 12px 8px 16px; }
+.mon-stream { flex:1 1 0; min-height:240px; }
+.mon-stream img { object-fit:cover; }   /* 박스가 4:3에 가까워 위아래만 조금 잘림 */
+.mon-side { display:flex; flex-direction:column; gap:12px; min-height:0; }
+
+.worker-icon { width:44px; height:44px; border-radius:22px; background:var(--ok-bg); color:var(--ok-fg);
+  display:flex; align-items:center; justify-content:center; flex:none; }
+.worker-state { font-size:20px; font-weight:700; color:var(--ok-fg); }
+.worker.warn { border-color:var(--warn-band); }
+.worker.warn .worker-icon { background:var(--warn-bg); color:var(--warn-fg); }
+.worker.warn .worker-state { color:var(--warn-fg); }
+.worker.danger { border-color:var(--danger-border); }
+.worker.danger .worker-icon { background:var(--danger-bg); color:var(--danger-fg); }
+.worker.danger .worker-state { color:var(--danger-fg); }
+.worker.idle .worker-icon { background:var(--subtle); color:var(--muted); }
+.worker.idle .worker-state { color:var(--text3); font-size:16px; }
+.worker-crit { margin:0; display:grid; grid-template-columns:auto 1fr; gap:6px 14px; font-size:12px; }
+.worker-crit dt { color:var(--muted); }
+.worker-crit dd { margin:0; color:var(--text2); }
+
+.todo { flex:1 1 0; min-height:0; overflow:hidden; display:flex; flex-direction:column; }
+.todo-list { list-style:none; margin:0; padding:4px 12px; overflow-y:auto; }
+.todo-list li { display:flex; align-items:center; gap:10px; padding:8px 4px; border-bottom:1px solid var(--subtle); }
+.todo-bar { width:4px; align-self:stretch; border-radius:2px; background:var(--warn); flex:none; }
+.todo-bar.danger { background:var(--danger); }
+.todo-text { flex:1 1 auto; min-width:0; display:flex; flex-direction:column; }
+.todo-msg { font-size:13px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.todo-time { font-size:11px; color:var(--muted); }
+.todo-empty { flex:1 1 auto; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; padding:12px; text-align:center; }
+.todo-ok { width:36px; height:36px; border-radius:18px; background:var(--ok-bg); color:var(--ok-fg); display:flex; align-items:center; justify-content:center; }
+
+@media (max-width: 1100px) {
+  .page.monitor { overflow-y:auto; }
+  .mon-body { grid-template-columns:1fr; flex:none; }
+  .mon-stream { aspect-ratio:16 / 9; flex:none; }
+  .todo { min-height:240px; }
+}
+@media (max-width: 760px) {
+  .mon-head { flex-wrap:wrap; }
+  .mon-steps { display:none; }
+  .gauges { grid-template-columns:1fr; }
+}
