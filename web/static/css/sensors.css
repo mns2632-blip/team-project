@@ -1,9 +1,6 @@
 /* 센서 분석 화면 */
 .sn-cards { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:16px; }
 .sn-swatch { width:10px; height:10px; border-radius:3px; }
-.sn-max { font-size:28px; font-weight:700; }
-.sn-card.danger .sn-over { color:var(--danger-fg); font-weight:600; }
-.sn-card.warn .sn-over { color:var(--warn-fg); font-weight:600; }
 .sn-leg { min-height:32px; padding:0 10px; border-radius:8px; border:1px solid var(--border); background:var(--bg);
   color:var(--text); font-size:13px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; }
 .sn-leg span { width:10px; height:3px; border-radius:2px; }
@@ -16,8 +13,22 @@
 .sn-corr .hd { color:var(--text3); background:transparent; }
 @media (max-width: 760px) { .sn-cards { grid-template-columns:1fr; } }
 .sn-thr-note { margin:0; font-size:13px; }
-.sn-thr { display:flex; flex-wrap:wrap; gap:6px; }
-.sn-thr-chip { display:inline-flex; align-items:baseline; gap:4px; padding:4px 10px; border-radius:6px; font-size:12px; border:1px solid; }
-.sn-thr-chip b { font-size:14px; }
-.sn-thr-chip.warn { background:var(--warn-bg); border-color:var(--warn-band); color:var(--warn-fg); }
-.sn-thr-chip.danger { background:var(--danger-bg); border-color:var(--danger-border); color:var(--danger-fg); }
+.sn-card { gap:14px; }
+.sn-title { font-size:14px; font-weight:600; }
+.sn-main { display:flex; flex-direction:column; gap:2px; }
+.sn-cap { font-size:12px; color:var(--muted); }
+.sn-val { display:flex; align-items:baseline; gap:4px; }
+.sn-max { font-size:32px; font-weight:700; line-height:1.1; }
+.sn-card.warn .sn-max { color:var(--warn-fg); }
+.sn-card.danger .sn-max { color:var(--danger-fg); }
+/* 단위는 값 옆에 같은 기준선으로, 크기만 한 단계 작게 */
+.sn-u { font-size:.6em; font-weight:500; color:var(--muted); margin-left:2px; }
+.sn-val .sn-u { font-size:15px; }
+.sn-stats, .sn-thr { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:0; }
+.sn-stats div, .sn-thr div { display:flex; flex-direction:column; gap:2px; padding:8px 10px; border-radius:8px; background:var(--subtle); }
+.sn-stats dt, .sn-thr dt { font-size:12px; color:var(--muted); }
+.sn-stats dd, .sn-thr dd { margin:0; font-size:16px; font-weight:600; display:flex; align-items:baseline; }
+.sn-thr { padding-top:12px; border-top:1px solid var(--border); }
+.sn-thr .warn { background:var(--warn-bg); } .sn-thr .warn dt, .sn-thr .warn dd { color:var(--warn-fg); }
+.sn-thr .danger { background:var(--danger-bg); } .sn-thr .danger dt, .sn-thr .danger dd { color:var(--danger-fg); }
+.sn-thr .sn-u { color:inherit; opacity:.75; }
