@@ -121,3 +121,13 @@ body.alarm::after { content:''; position:fixed; inset:0; border:4px solid var(--
   .page { padding:16px; overflow:visible; }
   .danger-bar { left:16px; right:16px; }
 }
+
+/* 경고 깜박임: 주의는 느리게, 위험은 빠르게 */
+@keyframes blink { 50% { opacity:.35; } }
+@keyframes blink-border { 50% { border-color:transparent; } }
+.badge.warn, .dot.warn, .nav-badge { animation:blink 1.6s ease-in-out infinite; }
+.badge.danger, .dot.danger, .nav-badge.danger { animation:blink .8s ease-in-out infinite; }
+body.alarm::after { animation:blink .8s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .badge.warn, .dot.warn, .nav-badge, .badge.danger, .dot.danger, body.alarm::after { animation:none; }
+}

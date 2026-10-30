@@ -31,3 +31,6 @@
 .lg-timeline .num { color:var(--muted); flex:none; }
 @media (max-width: 1100px) { .lg-body { grid-template-columns:1fr; } }
 @media (max-width: 760px) { .lg-stats { grid-template-columns:repeat(2, 1fr); } }
+
+/* 지난 기록은 깜박이지 않음 */
+#page-logs .badge, #page-logs .dot { animation:none; }

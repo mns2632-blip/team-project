@@ -88,3 +88,12 @@
   .mon-steps { display:none; }
   .gauges { grid-template-columns:1fr; }
 }
+
+/* 경고 깜박임 */
+.mon-status.warn .mon-status-icon, .gauge.warn, .worker.warn { animation:blink-border 1.6s ease-in-out infinite; }
+.mon-status.danger .mon-status-icon, .gauge.danger, .worker.danger { animation:blink-border .8s ease-in-out infinite; }
+.mon-status.warn .mon-status-icon { animation-name:blink; }
+.mon-status.danger .mon-status-icon { animation-name:blink; }
+@media (prefers-reduced-motion: reduce) {
+  .mon-status .mon-status-icon, .gauge, .worker { animation:none; }
+}
