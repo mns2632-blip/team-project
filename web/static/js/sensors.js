@@ -46,16 +46,22 @@ function renderSensors() {
   for(const key of Object.keys(SENSORS)) {
     const card = $("sn-" + key), vals = rows.map(r => r[key]);
     card.querySelector(".sn-unit").textContent = SENSORS[key].unit;
+    const t = settings.thr[key], u = SENSORS[key].unit;
+    card.querySelector(".sn-thr").textContent = `주의 ${t.warn}${u} · 위험 ${t.danger}${u}`;
     if(!vals.length) continue;
     const max = Math.max(...vals), lv = statusOf(key, max);
-    const over = vals.filter(v => statusOf(key, v) !== "ok").length;
     card.className = "card card-pad sn-card " + lv;
     card.querySelector(".sn-state").className = "badge sn-state " + lv;
     card.querySelector(".sn-state").textContent = LEVEL[lv];
     card.querySelector(".sn-max").textContent = fmt(key, max);
     card.querySelector(".sn-avg").textContent = fmt(key, vals.reduce((a, b) => a + b, 0) / vals.length) + SENSORS[key].unit;
     card.querySelector(".sn-min").textContent = fmt(key, Math.min(...vals)) + SENSORS[key].unit;
-    card.querySelector(".sn-over").textContent = over ? `${over}회 / ${vals.length}회 측정` : "없음";
+    // 기준 초과: 주의·위험 횟수와 구간 대비 비율
+    const nWarn = vals.filter(v => statusOf(key, v) === "warn").length;
+    const nDanger = vals.filter(v => statusOf(key, v) === "danger").length;
+    const pct = Math.round((nWarn + nDanger) / vals.length * 100);
+    card.querySelector(".sn-over").textContent = nWarn + nDanger
+      ? `주의 ${nWarn} · 위험 ${nDanger}회 (${pct}%)` : "없음";
   }
 
   // 통합 추이: 위험 기준 대비 %
