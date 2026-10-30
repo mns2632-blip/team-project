@@ -171,7 +171,8 @@ function renderDangerBar() {
   const open = events.filter(e => isOpen(e) && e.level === "danger");
   const show = settings.dangerBar && open.length > 0 && dangerDismissedFor !== open[0].id;
   $("danger-bar").hidden = !show;
-  document.body.classList.toggle("alarm", open.length > 0 && settings.dangerBar);
+  // 배너를 닫으면 테두리도 함께 끄고, 새 위험 이벤트가 오면 둘 다 다시 켬
+  document.body.classList.toggle("alarm", show);
   if(show) {
     $("danger-bar-text").textContent = `위험 이벤트 ${open.length}건 처리 필요 · ${open[0].msg}`;
     $("danger-bar-link").href = "#logs/" + open[0].id;
