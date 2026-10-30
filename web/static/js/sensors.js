@@ -47,7 +47,8 @@ function renderSensors() {
     const card = $("sn-" + key), vals = rows.map(r => r[key]);
     card.querySelector(".sn-unit").textContent = SENSORS[key].unit;
     const t = settings.thr[key], u = SENSORS[key].unit;
-    card.querySelector(".sn-thr").textContent = `주의 ${t.warn}${u} · 위험 ${t.danger}${u}`;
+    card.querySelector(".sn-thr-warn").textContent = t.warn + u;
+    card.querySelector(".sn-thr-danger").textContent = t.danger + u;
     if(!vals.length) continue;
     const max = Math.max(...vals), lv = statusOf(key, max);
     card.className = "card card-pad sn-card " + lv;

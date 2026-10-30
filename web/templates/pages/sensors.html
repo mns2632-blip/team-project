@@ -12,12 +12,17 @@
     </div>
   </header>
 
+  <p class="sn-thr-note muted">각 카드의 <b>주의·위험</b> 값을 넘으면 경보가 울립니다 · <a class="link" href="#settings">임계치 변경 →</a></p>
   <section class="sn-cards" aria-label="구간 요약">
     {% for key, label in [("temp", "온도"), ("humid", "습도"), ("gas", "가스 농도")] %}
     <div class="card card-pad sn-card" id="sn-{{ key }}">
       <div class="row"><span class="sn-swatch" style="background:var(--{{ key }});"></span><span style="font-size:14px;font-weight:600;">{{ label }}</span><span class="badge ok sn-state" style="margin-left:auto;">대기</span></div>
       <div class="row" style="align-items:baseline;gap:6px;"><span class="num sn-max">--</span><span class="muted sn-unit" style="font-size:12px;"></span><span class="muted" style="font-size:12px;">최고</span></div>
-      <dl class="kv"><dt>평균</dt><dd class="num sn-avg">--</dd><dt>최저</dt><dd class="num sn-min">--</dd><dt>기준 초과</dt><dd class="num sn-over">--</dd><dt>기준</dt><dd class="num sn-thr">--</dd></dl>
+      <div class="sn-thr" aria-label="{{ label }} 알람 임계치">
+        <span class="sn-thr-chip warn">주의 <b class="num sn-thr-warn">--</b> 초과</span>
+        <span class="sn-thr-chip danger">위험 <b class="num sn-thr-danger">--</b> 초과</span>
+      </div>
+      <dl class="kv"><dt>평균</dt><dd class="num sn-avg">--</dd><dt>최저</dt><dd class="num sn-min">--</dd><dt>기준 초과</dt><dd class="num sn-over">--</dd></dl>
     </div>
     {% endfor %}
   </section>

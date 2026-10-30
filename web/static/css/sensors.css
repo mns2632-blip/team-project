@@ -15,3 +15,9 @@
 .sn-corr span { min-height:40px; display:flex; align-items:center; justify-content:center; border-radius:6px; }
 .sn-corr .hd { color:var(--text3); background:transparent; }
 @media (max-width: 760px) { .sn-cards { grid-template-columns:1fr; } }
+.sn-thr-note { margin:0; font-size:13px; }
+.sn-thr { display:flex; flex-wrap:wrap; gap:6px; }
+.sn-thr-chip { display:inline-flex; align-items:baseline; gap:4px; padding:4px 10px; border-radius:6px; font-size:12px; border:1px solid; }
+.sn-thr-chip b { font-size:14px; }
+.sn-thr-chip.warn { background:var(--warn-bg); border-color:var(--warn-band); color:var(--warn-fg); }
+.sn-thr-chip.danger { background:var(--danger-bg); border-color:var(--danger-border); color:var(--danger-fg); }
