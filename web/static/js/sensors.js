@@ -1,31 +1,29 @@
-// 센서 분석 화면: 구간 요약, 위험 기준 대비 통합 추이, 센서 간 상관, CSV 내보내기
+// 센서 분석 화면: 구간 요약, 센서별 추이, 센서 간 상관, CSV 내보내기
 let snRangeMin = 60;
-const snHidden = {};
 
-const snChart = new Chart($("sn-chart").getContext("2d"), {
+// 센서별 추이 그래프: 실제 단위 축 + 주의·위험 임계선
+const snCharts = Object.fromEntries(Object.entries(SENSORS).map(([key, s]) => [key, new Chart($("sn-chart-" + key).getContext("2d"), {
   type:"line",
   data:{ labels:[], datasets:[
-    ...Object.entries(SENSORS).map(([key, s]) => ({ key, label:s.label, data:[], borderColor:s.color,
-      borderWidth:2, pointRadius:0, tension:0.3 })),
-    { key:"limit", label:"위험 기준", data:[], borderColor:"#DC2626", borderWidth:1, borderDash:[5, 4], pointRadius:0 },
+    { key, label:s.label, data:[], borderColor:s.color, backgroundColor:s.color + "1A", fill:true,
+      borderWidth:2, pointRadius:0, tension:0.3 },
+    { key:"warn", label:"주의", data:[], borderColor:"#D97706", borderWidth:1, borderDash:[5, 4], pointRadius:0 },
+    { key:"danger", label:"위험", data:[], borderColor:"#DC2626", borderWidth:1, borderDash:[5, 4], pointRadius:0 },
   ] },
   options:{
     animation:false, responsive:true, maintainAspectRatio:false,
     interaction:{ mode:"index", intersect:false },
     plugins:{
       legend:{ display:false },
-      tooltip:{ filter:item => item.dataset.key !== "limit", callbacks:{ label:ctx => {
-        const key = ctx.dataset.key;
-        const raw = snSamples()[ctx.dataIndex]?.[key];
-        return `${SENSORS[key].label}: ${fmt(key, raw)}${SENSORS[key].unit} (${ctx.parsed.y.toFixed(0)}%)`;
-      } } },
+      tooltip:{ filter:item => item.datasetIndex === 0,
+        callbacks:{ label:ctx => `${s.label}: ${fmt(key, ctx.parsed.y)}${s.unit}` } },
     },
     scales:{
-      x:{ ticks:{ color:"#71717A", maxTicksLimit:8, font:{ size:11 } }, grid:{ color:"#F4F4F5" } },
-      y:{ min:0, suggestedMax:120, ticks:{ color:"#71717A", callback:v => v + "%", font:{ size:11 } }, grid:{ color:"#F4F4F5" } },
+      x:{ ticks:{ color:"#71717A", maxTicksLimit:6, font:{ size:11 } }, grid:{ color:"#F4F4F5" } },
+      y:{ ticks:{ color:"#71717A", callback:v => v + s.unit, font:{ size:11 } }, grid:{ color:"#F4F4F5" } },
     },
   },
-});
+})]));
 
 const snSamples = () => state.samples.filter(s => s.t >= Date.now() - snRangeMin * 60 * 1000);
 
@@ -58,13 +56,17 @@ function renderSensors() {
     card.querySelector(".sn-min").textContent = fmt(key, Math.min(...vals));
   }
 
-  // 통합 추이: 위험 기준 대비 %
-  snChart.data.labels = rows.map(r => timeStr(r.t));
-  snChart.data.datasets.forEach(ds => {
-    if(ds.key === "limit") ds.data = rows.map(() => 100);
-    else { ds.data = rows.map(r => r[ds.key] / settings.thr[ds.key].danger * 100); ds.hidden = !!snHidden[ds.key]; }
-  });
-  snChart.update();
+  // 센서별 추이
+  const labels = rows.map(r => timeStr(r.t));
+  for(const [key, chart] of Object.entries(snCharts)) {
+    const t = settings.thr[key], [val, warn, danger] = chart.data.datasets;
+    chart.data.labels = labels;
+    val.data = rows.map(r => r[key]);
+    warn.data = rows.map(() => t.warn);
+    danger.data = rows.map(() => t.danger);
+    chart.options.scales.y.suggestedMax = t.danger * 1.1;
+    chart.update();
+  }
   $("sn-span").textContent = rows.length
     ? `${timeStr(rows[0].t)} – ${timeStr(rows.at(-1).t)} · ${rows.length}회 측정 · 이 브라우저에서 대시보드를 연 뒤 수집한 값만 분석합니다`
     : "아직 수집된 값이 없습니다";
@@ -118,13 +120,6 @@ $("sn-range").addEventListener("click", e => {
   if(!b) return;
   snRangeMin = +b.dataset.min;
   $("sn-range").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b));
-  renderSensors();
-});
-$("sn-legend").addEventListener("click", e => {
-  const b = e.target.closest("button[data-key]");
-  if(!b) return;
-  snHidden[b.dataset.key] = !snHidden[b.dataset.key];
-  b.setAttribute("aria-pressed", !snHidden[b.dataset.key]);
   renderSensors();
 });
 

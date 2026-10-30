@@ -1,16 +1,17 @@
 /* 센서 분석 화면 */
 .sn-cards { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:16px; }
 .sn-swatch { width:10px; height:10px; border-radius:3px; }
-.sn-leg { min-height:32px; padding:0 10px; border-radius:8px; border:1px solid var(--border); background:var(--bg);
-  color:var(--text); font-size:13px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; }
-.sn-leg span { width:10px; height:3px; border-radius:2px; }
-.sn-leg[aria-pressed="false"] { background:var(--bg-muted); color:#A1A1AA; }
-.sn-leg[aria-pressed="false"] span { opacity:.3; }
-.sn-chart { position:relative; height:320px; }
+.sn-charts { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:16px; }
+.sn-charts > .muted { grid-column:1 / -1; }
+.sn-chart { position:relative; height:220px; }
+.sn-chart-leg { margin-left:auto; display:flex; align-items:center; gap:6px; font-size:12px; color:var(--muted); }
+.sn-chart-leg i { width:14px; border-top:2px dashed; }
+.sn-chart-leg i.warn { color:#D97706; } .sn-chart-leg i.danger { color:#DC2626; margin-left:6px; }
 .sn-bottom { display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:16px; align-items:start; }
 .sn-corr { display:grid; grid-template-columns:64px repeat(3, minmax(0, 1fr)); gap:4px; font-size:13px; }
 .sn-corr span { min-height:40px; display:flex; align-items:center; justify-content:center; border-radius:6px; }
 .sn-corr .hd { color:var(--text3); background:transparent; }
+@media (max-width: 1100px) { .sn-charts { grid-template-columns:1fr; } }
 @media (max-width: 760px) { .sn-cards { grid-template-columns:1fr; } }
 .sn-thr-note { margin:0; font-size:13px; }
 .sn-card { gap:14px; }

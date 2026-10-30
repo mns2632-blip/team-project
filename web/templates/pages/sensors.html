@@ -33,16 +33,14 @@
     {% endfor %}
   </section>
 
-  <section class="card card-pad">
-    <div class="row" style="flex-wrap:wrap;gap:12px;">
-      <div><h2>센서 통합 추이</h2><p class="muted" style="margin:4px 0 0;font-size:13px;">각 센서 값을 <strong>위험 기준 = 100%</strong>로 맞춰 한 축에 겹쳤습니다</p></div>
-      <div class="row" style="margin-left:auto;gap:6px;" id="sn-legend">
-        <button type="button" class="sn-leg" data-key="temp" aria-pressed="true"><span style="background:var(--temp);"></span>온도</button>
-        <button type="button" class="sn-leg" data-key="humid" aria-pressed="true"><span style="background:var(--humid);"></span>습도</button>
-        <button type="button" class="sn-leg" data-key="gas" aria-pressed="true"><span style="background:var(--gas);"></span>가스 농도</button>
-      </div>
+  <section class="sn-charts" aria-label="센서별 추이">
+    {% for key, label in [("temp", "온도"), ("humid", "습도"), ("gas", "가스 농도")] %}
+    <div class="card card-pad">
+      <div class="row"><span class="sn-swatch" style="background:var(--{{ key }});"></span><h2>{{ label }} 추이</h2>
+        <span class="sn-chart-leg"><i class="warn"></i>주의 <i class="danger"></i>위험</span></div>
+      <div class="sn-chart"><canvas id="sn-chart-{{ key }}" aria-label="{{ label }} 추이 그래프" role="img"></canvas></div>
     </div>
-    <div class="sn-chart"><canvas id="sn-chart" aria-label="센서 통합 추이 그래프" role="img"></canvas></div>
+    {% endfor %}
     <div class="muted" style="font-size:12px;" id="sn-span">이 브라우저에서 대시보드를 연 뒤 수집한 값만 분석합니다</div>
   </section>
 
