@@ -5,9 +5,9 @@ const DEFAULT_SETTINGS = {
   site: "",
   zone: "",
   thr: {
-    temp:  { warn:32,  danger:40 },
-    humid: { warn:80,  danger:85 },
-    gas:   { warn:300, danger:500 },
+    temp:  { warn:45,  danger:60 },
+    humid: { warn:65,  danger:80 },
+    gas:   { warn:50,  danger:100 },
   },
   dangerBar: true,
 };
@@ -222,7 +222,8 @@ socket.on("detection_update", data => {
 
 socket.on("thermal_update", data => {
   state.thermal = data;
-  setDev("thermal", data.connected ? "ok" : "warn", data.connected ? "연결" : "더미 모드");
+  if(!data.connected) { setDev("thermal", "danger", "끊김"); emit("status"); return; }
+  setDev("thermal", "ok", "연결");
   const lv = data.status === "발열 위험" ? "danger" : data.status === "발열 주의" ? "warn" : "ok";
   trackLevel("thermal", lv, "열화상", `${data.status} — 최고 ${data.max_temp}°C (${data.hot_pos[0]}, ${data.hot_pos[1]})`);
   emit("thermal", data);

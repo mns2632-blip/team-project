@@ -50,7 +50,7 @@ class ThermalDetector:
     Waveshare ESP32-S3 열화상 카메라 TCP 수신기
     - Wi-Fi TCP(port 3333)로 80×62 열화상 프레임 수신
     - 실시간 최고/평균 온도 계산 및 이상 판정
-    - 모듈 미연결 시 더미 데이터 모드 자동 전환
+    - 모듈 미연결 시 None 반환 (재연결 시도)
     """
 
     def __init__(self, ip: str = THERMAL_IP, port: int = THERMAL_PORT):
@@ -59,7 +59,6 @@ class ThermalDetector:
         self._sock   = None
         self._buf    = b""
         self._lock   = threading.Lock()
-        self._dummy_t = 0
 
         # 최신 분석 결과 (스레드 공유용)
         self._latest = self._make_result(
@@ -86,7 +85,7 @@ class ThermalDetector:
         except Exception as e:
             self._sock = None
             self._connected = False
-            print(f"[INFO] 열화상 카메라 미연결 → 더미 모드 ({e})")
+            print(f"[INFO] 열화상 카메라 미연결 → 재연결 대기 ({e})")
 
     def _disconnect(self):
         if self._sock:
@@ -127,10 +126,10 @@ class ThermalDetector:
     # ─────────────────────────────────────
     # 외부 호출 메서드
     # ─────────────────────────────────────
-    def read(self) -> dict:
+    def read(self) -> dict | None:
         """
         프레임 1개 읽어 분석 결과 반환.
-        미연결 시 재연결 시도 후 더미 데이터 반환.
+        미연결 시 재연결 시도 후 실패하면 None 반환.
         """
         if not self._connected:
             self._connect()
@@ -142,23 +141,7 @@ class ThermalDetector:
                 with self._lock:
                     self._latest = result
                 return result
-            # 수신 실패 → 더미
-        return self._read_dummy()
-
-    # ─────────────────────────────────────
-    # 더미 데이터 (미연결 시)
-    # ─────────────────────────────────────
-    def _read_dummy(self) -> dict:
-        self._dummy_t += 1
-        arr = np.random.uniform(22.0, 35.0, (FRAME_H, FRAME_W)).astype(np.float32)
-        # 중앙 발열점
-        arr[28:34, 36:44] += np.random.uniform(5, 20)
-        # 주기적 이상 온도
-        if self._dummy_t % 40 == 0:
-            arr[31, 40] = 65.0
-        elif self._dummy_t % 20 == 0:
-            arr[31, 40] = 50.0
-        return self._make_result(arr, connected=False)
+        return None
 
     # ─────────────────────────────────────
     # 온도 배열 분석 & 결과 생성

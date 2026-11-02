@@ -14,7 +14,7 @@ function renderThermal(d) {
   $("th-avg").textContent = d.avg_temp.toFixed(1);
   $("th-min").textContent = d.min_temp.toFixed(1);
   $("th-hot").textContent = `(${d.hot_pos[0]}, ${d.hot_pos[1]}) : ${d.max_temp}°C`;
-  $("th-conn").textContent = d.connected ? "Wi-Fi 연결됨" : "더미 모드";
+  $("th-conn").textContent = "Wi-Fi 연결됨";
   const lv = state.status.thermal, badge = $("th-status");
   badge.className = "badge " + lv;
   badge.textContent = d.status;

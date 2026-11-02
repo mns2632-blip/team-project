@@ -49,7 +49,7 @@ function renderDeviceBadges() {
   const age = lastSensorAt ? (Date.now() - lastSensorAt) / 1000 : null;
   set("st-dev-sensor", age == null ? "" : age < 10 ? "ok" : "danger", age == null ? "대기 중" : age < 10 ? "수신 중" : "수신 끊김");
   const th = state.thermal;
-  set("st-dev-thermal", th ? (th.connected ? "ok" : "warn") : "", th ? (th.connected ? "연결됨" : "더미 모드") : "대기 중");
+  set("st-dev-thermal", th ? (th.connected ? "ok" : "danger") : "", th ? (th.connected ? "연결됨" : "끊김") : "대기 중");
 }
 
 $("st-bar").addEventListener("click", e =>
