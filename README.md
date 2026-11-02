@@ -8,7 +8,6 @@ IoT 센서와 AI 카메라로 밀폐공간의 **환경 이상**(온도·습도·
 |---|---|---|
 | 영상 | Logitech C920 + YOLOv8n + MediaPipe Pose | 사람 탐지, 쓰러짐·장시간 정지 판정 |
 | 환경 센서 | ESP32 + DHT22 + MQ-2/MQ-135 | 온도·습도·가스 측정 → USB 시리얼(JSON) 전송 |
-| 열화상 | Waveshare Thermal-45 (ESP32-S3) | 80×62 열화상 → Wi-Fi TCP(3333) 전송, 발열 감지 |
 | 서버 | FastAPI + Uvicorn + python-socketio | 비동기 웹 서버, 영상 스트리밍, 센서 데이터 실시간 전송 |
 | 대시보드 | HTML + Socket.IO + Chart.js | 실시간 모니터링 화면 |
 
@@ -99,14 +98,6 @@ Wi-Fi 주소가 설정된 경우에는 USB 시리얼 대신 해당 주소를 2�
 | DHT22 | VCC / DATA / GND | 3.3V / GPIO4 / GND |
 | MQ-2·MQ-135 | VCC / AO / GND | 5V / GPIO34 / GND |
 
-### 4. 열화상 카메라 (선택)
-
-1. Thermal-45 모듈에 Type-C 전원 연결
-2. 서버 PC/Jetson을 모듈 Wi-Fi(`Thermal_Camera_XXXX`)에 접속
-3. 앱 실행 시 `192.168.4.1:3333`으로 자동 연결
-
-공유기(STA 모드)에 연결해서 쓸 때는 `web/services/thermal_camera.py`의 `THERMAL_IP`를 모듈 IP로 바꾸세요.
-
 ## 환경변수
 
 | 이름 | 설명 | 기본값 |
@@ -136,13 +127,6 @@ $env:SECRET_KEY="생성한 값"
 FALL_RATIO_THRESHOLD  = 1.2   # 바운딩박스 가로/세로 비율
 SPINE_ANGLE_THRESHOLD = 45    # 척추 기울기 각도 (도)
 STILL_TIME_THRESHOLD  = 5.0   # 장시간 정지 판정 (초)
-```
-
-**발열 감지** (`web/services/thermal_camera.py`)
-
-```python
-TEMP_WARN   = 45.0   # 주의 (°C)
-TEMP_DANGER = 60.0   # 위험 (°C)
 ```
 
 ## Jetson Nano 이식

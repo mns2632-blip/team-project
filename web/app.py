@@ -13,7 +13,6 @@ from starlette.middleware.sessions import SessionMiddleware
 from web.detectors.fall import FallDetector
 from web.routes import register_routes
 from web.services.sensors import SensorService
-from web.services.thermal_camera import ThermalDetector
 from web.services.video_pipeline import VideoPipeline
 
 
@@ -49,9 +48,8 @@ def create_app() -> FastAPI:
         app.state.login_password = login_password
         emitter = ThreadSafeSocketEmitter(socket_server, asyncio.get_running_loop())
         fall_detector = FallDetector()
-        thermal_detector = ThermalDetector()
         pipeline = VideoPipeline(fall_detector, emitter)
-        sensor_service = SensorService(emitter, thermal_detector)
+        sensor_service = SensorService(emitter)
 
         app.state.pipeline = pipeline
         app.state.sensor_service = sensor_service

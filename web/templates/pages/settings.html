@@ -31,7 +31,6 @@
             {% endfor %}
             <tr class="st-fixed"><td>척추 기울기</td><td>°</td><td colspan="2"><span class="num" id="st-spine"></span> 초과 시 쓰러짐 · 서버 고정값 (<code>detectors/fall.py</code>)</td></tr>
             <tr class="st-fixed"><td>정지 시간</td><td>초</td><td colspan="2"><span class="num" id="st-still"></span> 이상 시 장시간 정지 · 서버 고정값 (<code>detectors/fall.py</code>)</td></tr>
-            <tr class="st-fixed"><td>열화상 최고 온도</td><td>°C</td><td colspan="2">주의 <span class="num" id="st-th-warn"></span> · 위험 <span class="num" id="st-th-danger"></span> · 서버 고정값 (<code>services/thermal_camera.py</code>)</td></tr>
           </tbody>
         </table>
         <p class="st-err" id="st-err" role="alert"></p>
@@ -44,7 +43,6 @@
         <ul class="st-devices">
           <li><div><div class="st-dev-name">AI 카메라</div><div class="muted" style="font-size:12px;">USB · /dev/video0 · YOLOv8n + MediaPipe Pose</div></div><span class="badge" id="st-dev-cam">확인 중</span></li>
           <li><div><div class="st-dev-name">ESP32 환경 센서</div><div class="muted" style="font-size:12px;">USB 시리얼 · DHT22 + MQ 가스 센서</div></div><span class="badge" id="st-dev-sensor">대기 중</span></li>
-          <li><div><div class="st-dev-name">열화상 카메라</div><div class="muted" style="font-size:12px;">Wi-Fi TCP :3333 · 80×62</div></div><span class="badge" id="st-dev-thermal">대기 중</span></li>
         </ul>
         <p class="muted" style="font-size:12px;margin:0;padding:0 18px 14px;">장치가 끊기면 데이터 수신이 중단되고 연결 상태가 '끊김'으로 표시됩니다.</p>
       </div>

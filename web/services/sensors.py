@@ -10,9 +10,8 @@ import serial.tools.list_ports
 
 
 class SensorService:
-    def __init__(self, socketio, thermal_detector):
+    def __init__(self, socketio):
         self.socketio = socketio
-        self.thermal_detector = thermal_detector
         self.sensor_data = {"temperature": 0.0, "humidity": 0.0, "gas": 0}
         self.sensor_connected = False
         self._stop = threading.Event()
@@ -112,27 +111,6 @@ class SensorService:
 
             self._stop.wait(2)
 
-    def read_thermal(self):
-        while not self._stop.is_set():
-            try:
-                data = self.thermal_detector.read()
-                if data is None:
-                    self.socketio.emit("thermal_update", {"connected": False})
-                    self._stop.wait(2)
-                    continue
-                data["env_temperature"] = self.sensor_data["temperature"]
-                data["env_humidity"] = self.sensor_data["humidity"]
-                data["env_gas"] = self.sensor_data["gas"]
-                self.socketio.emit("thermal_update", data)
-                if data["status"] != "정상":
-                    print(
-                        f"[THERMAL] {data['status']} — 최고온도: {data['max_temp']}°C "
-                        f"위치: {data['hot_pos']}"
-                    )
-            except Exception as error:
-                print(f"[THERMAL ERROR] {error}")
-            self._stop.wait(2)
-
     def start(self):
         if any(worker.is_alive() for worker in self._workers):
             return
@@ -142,14 +120,9 @@ class SensorService:
             or os.getenv("ESP32_SENSOR_IP", "").strip()
         )
         sensor_worker = self.read_sensor_wifi if wifi_sensor_configured else self.read_sensor_esp32
-        workers = (
-            sensor_worker,
-            self.read_thermal,
-        )
-        for worker in workers:
-            thread = threading.Thread(target=worker, daemon=True)
-            self._workers.append(thread)
-            thread.start()
+        thread = threading.Thread(target=sensor_worker, daemon=True)
+        self._workers.append(thread)
+        thread.start()
 
     def stop(self):
         self._stop.set()

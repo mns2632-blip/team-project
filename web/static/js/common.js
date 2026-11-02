@@ -11,8 +11,8 @@ const DEFAULT_SETTINGS = {
   },
   dangerBar: true,
 };
-// 서버(detectors/fall.py, services/thermal_camera.py)에 고정된 판정 기준
-const SERVER_THR = { spine:45, still:5, thermalWarn:45, thermalDanger:60 };
+// 서버(detectors/fall.py)에 고정된 판정 기준
+const SERVER_THR = { spine:45, still:5 };
 
 const settings = structuredClone(DEFAULT_SETTINGS);
 try {
@@ -53,9 +53,8 @@ function emit(name, data) { (bus[name] || []).forEach(fn => fn(data)); }
 // ── 실시간 상태 ──
 const state = {
   samples: [],            // { t, temp, humid, gas } — 페이지를 연 뒤 수집한 값
-  status: { temp:"ok", humid:"ok", gas:"ok", cam:"ok", thermal:"ok" },
+  status: { temp:"ok", humid:"ok", gas:"ok", cam:"ok" },
   detection: "감지 대기 중",
-  thermal: null,
   metrics: null,
   startedAt: Date.now(),
 };
@@ -104,7 +103,7 @@ function trackLevel(key, level, src, msg) {
 
 // ── 종합 상태 ──
 function overall() {
-  const names = { temp:"온도", humid:"습도", gas:"가스 농도", cam:"작업자", thermal:"열화상 발열" };
+  const names = { temp:"온도", humid:"습도", gas:"가스 농도", cam:"작업자" };
   const issues = Object.entries(state.status).filter(([, s]) => s !== "ok")
     .sort((a, b) => RANK[b[1]] - RANK[a[1]]);
   const level = issues.reduce((acc, [, s]) => worse(acc, s), "ok");
@@ -217,16 +216,6 @@ socket.on("detection_update", data => {
   const lv = data.status.includes("쓰러짐") ? "danger" : data.status.includes("정지") ? "warn" : "ok";
   trackLevel("cam", lv, "AI 카메라", lv === "danger" ? "작업자 쓰러짐 감지" : "작업자 장시간 정지 감지");
   emit("detection", data.status);
-  emit("status");
-});
-
-socket.on("thermal_update", data => {
-  state.thermal = data;
-  if(!data.connected) { setDev("thermal", "danger", "끊김"); emit("status"); return; }
-  setDev("thermal", "ok", "연결");
-  const lv = data.status === "발열 위험" ? "danger" : data.status === "발열 주의" ? "warn" : "ok";
-  trackLevel("thermal", lv, "열화상", `${data.status} — 최고 ${data.max_temp}°C (${data.hot_pos[0]}, ${data.hot_pos[1]})`);
-  emit("thermal", data);
   emit("status");
 });
 

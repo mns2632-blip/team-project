@@ -48,18 +48,13 @@ function renderDeviceBadges() {
     m ? (m.camera_available ? `연결됨 · ${m.camera_fps.toFixed(0)} fps` : "오프라인") : "확인 불가");
   const age = lastSensorAt ? (Date.now() - lastSensorAt) / 1000 : null;
   set("st-dev-sensor", age == null ? "" : age < 10 ? "ok" : "danger", age == null ? "대기 중" : age < 10 ? "수신 중" : "수신 끊김");
-  const th = state.thermal;
-  set("st-dev-thermal", th ? (th.connected ? "ok" : "danger") : "", th ? (th.connected ? "연결됨" : "끊김") : "대기 중");
 }
 
 $("st-bar").addEventListener("click", e =>
   e.currentTarget.setAttribute("aria-checked", e.currentTarget.getAttribute("aria-checked") !== "true"));
 $("st-spine").textContent = SERVER_THR.spine + "°";
 $("st-still").textContent = SERVER_THR.still + "초";
-$("st-th-warn").textContent = SERVER_THR.thermalWarn + "°C";
-$("st-th-danger").textContent = SERVER_THR.thermalDanger + "°C";
 
 on("page", p => { if(p === "settings") { loadSettingsForm(); renderDeviceBadges(); } });
 on("metrics", renderDeviceBadges);
-on("thermal", renderDeviceBadges);
 on("sample", () => { if(currentPage === "settings") renderDeviceBadges(); });
