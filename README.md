@@ -82,6 +82,14 @@ pio device monitor
 
 `web/services/sensors.py`가 ESP32 포트(CP210x, CH340 등)를 자동으로 찾습니다. 펌웨어·PlatformIO 모니터·서버의 시리얼 속도는 **9600**입니다.
 
+Wi-Fi로 센서 데이터를 수신하려면 `.env`의 `ESP32_SENSOR_URL`에 ESP32의 HTTP 주소를 설정하세요.
+
+```env
+ESP32_SENSOR_URL=http://192.168.0.50/
+```
+
+Wi-Fi 주소가 설정된 경우에는 USB 시리얼 대신 해당 주소를 2초 간격으로 조회합니다.
+
 **배선**
 
 | 센서 | 핀 | ESP32 |

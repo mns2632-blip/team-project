@@ -2,6 +2,9 @@ import json
 import random
 import threading
 import time
+import os
+from urllib.error import URLError
+from urllib.request import urlopen
 
 import serial
 import serial.tools.list_ports
@@ -70,6 +73,46 @@ class SensorService:
                 print(f"[ERROR] {error} → 3초 후 재시도 (더미 모드 전환)")
                 self._stop.wait(3)
 
+    def read_sensor_wifi(self):
+        sensor_url = os.getenv("ESP32_SENSOR_URL", "").strip()
+        if not sensor_url:
+            sensor_ip = os.getenv("ESP32_SENSOR_IP", "").strip()
+            if sensor_ip:
+                sensor_url = f"http://{sensor_ip}/"
+
+        if not sensor_url:
+            print("[WARN] ESP32_SENSOR_URL 또는 ESP32_SENSOR_IP가 설정되지 않았습니다.")
+            return
+
+        print(f"[INFO] ESP32 Wi-Fi 센서 수신 시작: {sensor_url}")
+        while not self._stop.is_set():
+            try:
+                with urlopen(sensor_url, timeout=3) as response:
+                    data = json.loads(response.read().decode("utf-8"))
+
+                if all(key in data for key in ["temperature", "humidity", "gas"]):
+                    self.sensor_data["temperature"] = round(
+                        float(data["temperature"]), 1
+                    )
+                    self.sensor_data["humidity"] = round(
+                        float(data["humidity"]), 1
+                    )
+                    self.sensor_data["gas"] = int(data["gas"])
+                    self.sensor_connected = True
+                    self.socketio.emit("sensor_update", self.sensor_data)
+                    print(
+                        f"[DATA] 온도:{self.sensor_data['temperature']}°C  "
+                        f"습도:{self.sensor_data['humidity']}%  "
+                        f"가스:{self.sensor_data['gas']}ppm"
+                    )
+            except (URLError, TimeoutError, json.JSONDecodeError, ValueError) as error:
+                self.sensor_connected = False
+                print(f"[WARN] Wi-Fi 센서 연결 끊김: {error} → 3초 후 재연결 (더미 모드 전환)")
+                self._stop.wait(3)
+                continue
+
+            self._stop.wait(2)
+
     def generate_dummy_sensor(self):
         print("[INFO] 환경 센서 더미 모드 시작")
         while not self._stop.is_set():
@@ -101,8 +144,13 @@ class SensorService:
         if any(worker.is_alive() for worker in self._workers):
             return
         self._stop.clear()
+        wifi_sensor_configured = bool(
+            os.getenv("ESP32_SENSOR_URL", "").strip()
+            or os.getenv("ESP32_SENSOR_IP", "").strip()
+        )
+        sensor_worker = self.read_sensor_wifi if wifi_sensor_configured else self.read_sensor_esp32
         workers = (
-            self.read_sensor_esp32,
+            sensor_worker,
             self.generate_dummy_sensor,
             self.read_thermal,
         )
