@@ -31,8 +31,9 @@ IoT 센서와 AI 카메라로 밀폐공간의 **환경 이상**(온도·습도·
 ├── requirements.txt
 ├── .env.example            ← 로그인 환경변수 견본
 └── esp32_sensor/
-    ├── esp32_sensor.ino    ← ESP32 환경 센서 펌웨어
-    └── secrets.example.h   ← Wi-Fi 설정 견본 (secrets.h로 복사해서 사용)
+    ├── platformio.ini      ← PlatformIO 보드·라이브러리·시리얼 설정
+    ├── src/main.cpp        ← ESP32 환경 센서 펌웨어
+    └── include/secrets.example.h ← Wi-Fi 설정 견본
 ```
 
 ## 처음 세팅
@@ -64,12 +65,22 @@ pip으로 설치해야 하는 환경에서는 `pip install -r requirements.txt` 
 
 ### 3. ESP32 환경 센서 (선택)
 
-1. `esp32_sensor/secrets.example.h`를 복사해서 `secrets.h`로 이름 변경
-2. `secrets.h`에 본인 Wi-Fi 정보 입력
-3. Arduino IDE에서 `DHT sensor library`, `ArduinoJson`을 설치하고 ESP32에 업로드
-4. ESP32를 서버 PC/Jetson에 USB로 연결
+1. VS Code에 **PlatformIO IDE** 확장을 설치하고 `esp32_sensor` 폴더를 엽니다.
+2. `include/secrets.example.h`를 같은 폴더의 `include/secrets.h`로 복사하고 본인 Wi-Fi 정보를 입력합니다. `secrets.h`는 Git에서 제외됩니다.
+3. ESP32를 USB로 연결하고 PlatformIO의 **Build** → **Upload**를 실행합니다. 필요한 라이브러리는 자동으로 설치됩니다.
+4. **Monitor**에서 Wi-Fi 연결 상태와 ESP32 IP, 센서 JSON 출력을 확인합니다. 서버를 실행하기 전에는 Monitor를 닫아 시리얼 포트를 해제합니다.
 
-`web/services/sensors.py`가 ESP32 포트(CP210x, CH340 등)를 자동으로 찾습니다. 시리얼 속도는 **115200**입니다.
+기본 보드는 **ESP32 Dev Module (`esp32dev`)**입니다. 다른 보드를 사용하면 `platformio.ini`의 `board`를 변경하세요. 포트는 자동 감지하며, 필요하면 `upload_port`와 `monitor_port`를 해당 파일에 지정할 수 있습니다.
+
+PlatformIO 터미널에서는 다음 명령도 사용할 수 있습니다.
+
+```bash
+pio run
+pio run --target upload
+pio device monitor
+```
+
+`web/services/sensors.py`가 ESP32 포트(CP210x, CH340 등)를 자동으로 찾습니다. 펌웨어·PlatformIO 모니터·서버의 시리얼 속도는 **9600**입니다.
 
 **배선**
 

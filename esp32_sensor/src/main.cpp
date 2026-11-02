@@ -26,7 +26,7 @@
 // WiFi 정보
 // ─────────────────────────────
 
-#include "secrets.example.h"
+#include "secrets.h"
 const char* ssid = WIFI_SSID;
 const char* password = WIFI_PASS;
 

@@ -7,3 +7,10 @@ __pycache__/
 
 # Downloaded inference models
 web/models/*
+
+# ESP32 PlatformIO build output and local Wi-Fi credentials
+esp32_sensor/.pio/
+esp32_sensor/include/secrets.h
+esp32_sensor/.vscode/c_cpp_properties.json
+esp32_sensor/.vscode/launch.json
+esp32_sensor/.vscode/ipch/
