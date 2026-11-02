@@ -86,6 +86,20 @@ void setup() {
   Serial.println("[OK] ESP32 센서 초기화 완료");
 
   // ── WiFi 연결 ──
+  IPAddress localIP;
+  IPAddress gatewayIP;
+  IPAddress subnetMask;
+  IPAddress dnsIP;
+
+  localIP.fromString(WIFI_STATIC_IP);
+  gatewayIP.fromString(WIFI_GATEWAY);
+  subnetMask.fromString(WIFI_SUBNET);
+  dnsIP.fromString(WIFI_DNS);
+
+  if (!WiFi.config(localIP, gatewayIP, subnetMask, dnsIP)) {
+    Serial.println("[ERROR] 고정 IP 설정 실패");
+  }
+
   WiFi.begin(ssid, password);
 
   Serial.print("WiFi Connecting");

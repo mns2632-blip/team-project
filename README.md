@@ -67,6 +67,8 @@ pip으로 설치해야 하는 환경에서는 `pip install -r requirements.txt` 
 
 1. VS Code에 **PlatformIO IDE** 확장을 설치하고 `esp32_sensor` 폴더를 엽니다.
 2. `include/secrets.example.h`를 같은 폴더의 `include/secrets.h`로 복사하고 본인 Wi-Fi 정보를 입력합니다. `secrets.h`는 Git에서 제외됩니다.
+   - `WIFI_STATIC_IP`에 ESP32에 할당할 고정 IP를 입력합니다.
+   - 라우터의 게이트웨이, 서브넷 마스크, DNS와 일치하도록 나머지 주소도 설정합니다.
 3. ESP32를 USB로 연결하고 PlatformIO의 **Build** → **Upload**를 실행합니다. 필요한 라이브러리는 자동으로 설치됩니다.
 4. **Monitor**에서 Wi-Fi 연결 상태와 ESP32 IP, 센서 JSON 출력을 확인합니다. 서버를 실행하기 전에는 Monitor를 닫아 시리얼 포트를 해제합니다.
 
