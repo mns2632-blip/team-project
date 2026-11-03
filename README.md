@@ -99,6 +99,27 @@ Wi-Fi 주소가 설정된 경우에는 USB 시리얼 대신 해당 주소를 2�
 | DHT22 | VCC / DATA / GND | 3.3V / GPIO4 / GND |
 | MQ-2·MQ-135 | VCC / AO / GND | 5V / GPIO34 / GND |
 
+**공유기(Wi-Fi)가 바뀌었을 때**
+
+mDNS로 접속하므로 IP를 직접 고칠 필요 없이 Wi-Fi 정보만 바꾸면 됩니다.
+
+1. `esp32_sensor/include/secrets.h`의 `WIFI_SSID`, `WIFI_PASS`를 새 공유기 정보로 수정합니다. `MDNS_HOSTNAME`은 그대로 둡니다.
+2. 펌웨어를 다시 **Upload**하고, **Monitor**에서 다음 출력을 확인한 뒤 Monitor를 닫습니다.
+   ```
+   [OK] WiFi Connected
+   ESP32 IP : 192.168.x.x
+   [OK] mDNS : http://esp32-sensor.local/
+   ```
+3. 서버 PC를 ESP32와 **같은 공유기**에 연결합니다. `.env`는 수정하지 않습니다.
+4. 브라우저에서 `http://esp32-sensor.local/`을 열어 센서 JSON이 보이면 서버를 실행합니다. 대시보드의 환경 센서 상태가 "수신 중"이면 정상입니다.
+
+`.local` 주소가 열리지 않으면(WSL2, 기기 간 통신이 차단된 Wi-Fi 등) IP를 직접 지정합니다.
+
+1. 2번에서 시리얼 모니터에 출력된 `ESP32 IP`를 확인합니다.
+2. `.env`를 `ESP32_SENSOR_URL=http://192.168.x.x/`로 수정하고 서버를 다시 시작합니다.
+
+이 IP는 공유기가 자동 할당하므로 재부팅 시 바뀔 수 있습니다. 계속 IP로 사용하려면 공유기 관리 페이지(보통 `192.168.0.1` 또는 `192.168.1.1`)의 **DHCP 예약(고정 IP 할당)** 메뉴에서 ESP32의 MAC 주소(또는 `esp32-sensor`)에 IP를 고정하세요.
+
 ## 환경변수
 
 | 이름 | 설명 | 기본값 |
