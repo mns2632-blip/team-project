@@ -66,10 +66,9 @@ pip으로 설치해야 하는 환경에서는 `pip install -r requirements.txt` 
 
 1. VS Code에 **PlatformIO IDE** 확장을 설치하고 `esp32_sensor` 폴더를 엽니다.
 2. `include/secrets.example.h`를 같은 폴더의 `include/secrets.h`로 복사하고 본인 Wi-Fi 정보를 입력합니다. `secrets.h`는 Git에서 제외됩니다.
-   - `WIFI_STATIC_IP`에 ESP32에 할당할 고정 IP를 입력합니다.
-   - 라우터의 게이트웨이, 서브넷 마스크, DNS와 일치하도록 나머지 주소도 설정합니다.
+   - IP는 공유기가 자동으로 할당하며, 서버는 mDNS 이름(`MDNS_HOSTNAME`, 기본 `esp32-sensor`)으로 ESP32를 찾습니다. Wi-Fi가 바뀌어도 SSID·비밀번호만 고치면 됩니다.
 3. ESP32를 USB로 연결하고 PlatformIO의 **Build** → **Upload**를 실행합니다. 필요한 라이브러리는 자동으로 설치됩니다.
-4. **Monitor**에서 Wi-Fi 연결 상태와 ESP32 IP, 센서 JSON 출력을 확인합니다. 서버를 실행하기 전에는 Monitor를 닫아 시리얼 포트를 해제합니다.
+4. **Monitor**에서 Wi-Fi 연결 상태와 ESP32 IP·mDNS 주소, 센서 JSON 출력을 확인합니다. 서버를 실행하기 전에는 Monitor를 닫아 시리얼 포트를 해제합니다.
 
 기본 보드는 **ESP32 Dev Module (`esp32dev`)**입니다. 다른 보드를 사용하면 `platformio.ini`의 `board`를 변경하세요. 포트는 자동 감지하며, 필요하면 `upload_port`와 `monitor_port`를 해당 파일에 지정할 수 있습니다.
 
@@ -86,8 +85,10 @@ pio device monitor
 Wi-Fi로 센서 데이터를 수신하려면 `.env`의 `ESP32_SENSOR_URL`에 ESP32의 HTTP 주소를 설정하세요.
 
 ```env
-ESP32_SENSOR_URL=http://192.168.0.50/
+ESP32_SENSOR_URL=http://esp32-sensor.local/
 ```
+
+서버와 ESP32는 같은 Wi-Fi에 있어야 합니다. `.local` 이름 해석은 Windows·macOS는 기본 지원하고, Linux/Jetson은 `avahi-daemon`과 `libnss-mdns`가 필요합니다(`sudo apt install avahi-daemon libnss-mdns`). WSL2에서는 `.local`이 해석되지 않을 수 있으니 이때는 시리얼 모니터에 출력된 IP를 사용하세요.
 
 Wi-Fi 주소가 설정된 경우에는 USB 시리얼 대신 해당 주소를 2초 간격으로 조회합니다.
 

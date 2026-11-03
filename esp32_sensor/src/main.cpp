@@ -18,6 +18,7 @@
 
 #include <Arduino.h>
 #include <WiFi.h>
+#include <ESPmDNS.h>
 #include <WebServer.h>
 #include <DHT.h>
 #include <ArduinoJson.h>
@@ -29,6 +30,11 @@
 #include "secrets.h"
 const char* ssid = WIFI_SSID;
 const char* password = WIFI_PASS;
+
+// mDNS 호스트명 → http://<MDNS_HOSTNAME>.local/ 로 접속
+#ifndef MDNS_HOSTNAME
+#define MDNS_HOSTNAME "esp32-sensor"
+#endif
 
 
 // ─────────────────────────────
@@ -85,21 +91,8 @@ void setup() {
 
   Serial.println("[OK] ESP32 센서 초기화 완료");
 
-  // ── WiFi 연결 ──
-  IPAddress localIP;
-  IPAddress gatewayIP;
-  IPAddress subnetMask;
-  IPAddress dnsIP;
-
-  localIP.fromString(WIFI_STATIC_IP);
-  gatewayIP.fromString(WIFI_GATEWAY);
-  subnetMask.fromString(WIFI_SUBNET);
-  dnsIP.fromString(WIFI_DNS);
-
-  if (!WiFi.config(localIP, gatewayIP, subnetMask, dnsIP)) {
-    Serial.println("[ERROR] 고정 IP 설정 실패");
-  }
-
+  // ── WiFi 연결 (IP는 공유기 DHCP로 할당) ──
+  WiFi.setHostname(MDNS_HOSTNAME);
   WiFi.begin(ssid, password);
 
   Serial.print("WiFi Connecting");
@@ -118,6 +111,16 @@ void setup() {
   Serial.print("ESP32 IP : ");
 
   Serial.println(WiFi.localIP());
+
+  // ── mDNS 시작 ──
+  if (MDNS.begin(MDNS_HOSTNAME)) {
+    MDNS.addService("http", "tcp", 80);
+    Serial.print("[OK] mDNS : http://");
+    Serial.print(MDNS_HOSTNAME);
+    Serial.println(".local/");
+  } else {
+    Serial.println("[ERROR] mDNS 시작 실패");
+  }
 
   // ── 웹서버 시작 ──
   server.on("/", handleRoot);
